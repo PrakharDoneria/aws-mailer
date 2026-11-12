@@ -11,18 +11,19 @@ export class MonitoringStack extends Construct {
   constructor(scope: Construct, id: string, props: MonitoringStackProps) {
     super(scope, id);
 
-    // Create CloudWatch log groups
-    const apiLogGroup = new logs.LogGroup(this, "ApiLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/api`,
-      retention: logs.RetentionDays.ONE_MONTH,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // Import or create CloudWatch log groups (import-safe: won't fail if they
+    // already exist from a previous partial deployment).
+    const apiLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "ApiLogGroup",
+      `/mailforge/${props.environment}/api`
+    );
 
-    const lambdaLogGroup = new logs.LogGroup(this, "LambdaLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/lambda`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    const lambdaLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "LambdaLogGroup",
+      `/mailforge/${props.environment}/lambda`
+    );
 
     // Create CloudWatch dashboard
     const dashboard = new cloudwatch.Dashboard(this, "Dashboard", {

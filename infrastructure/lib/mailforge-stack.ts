@@ -10,6 +10,14 @@ import { EmailProcessingStack } from "./stacks/email-processing-stack";
 import { FrontendStack } from "./stacks/frontend-stack";
 import { MonitoringStack } from "./stacks/monitoring-stack";
 
+/** Read an integer CDK context value; returns undefined if absent or zero. */
+function parseContextInt(scope: Construct, key: string): number | undefined {
+  const raw = scope.node.tryGetContext(key);
+  if (raw === undefined || raw === null) return undefined;
+  const n = parseInt(String(raw), 10);
+  return isNaN(n) || n <= 0 ? undefined : n;
+}
+
 export interface MailForgeStackProps extends cdk.StackProps {
   environment: string;
 }
@@ -62,6 +70,14 @@ export class MailForgeStack extends cdk.Stack {
         storageStack,
         queueStack,
         emailStack,
+        // Concurrency values are injected by the deploy script after querying
+        // the account's Lambda concurrency limit. When not provided (undefined)
+        // the Lambdas use the shared unreserved pool, which always works.
+        reservedConcurrency: {
+          inboundProcessor: parseContextInt(this, "lambdaConcurrencyInbound"),
+          outboundSender:   parseContextInt(this, "lambdaConcurrencyOutbound"),
+          webhookDispatcher: parseContextInt(this, "lambdaConcurrencyWebhook"),
+        },
       }
     );
 

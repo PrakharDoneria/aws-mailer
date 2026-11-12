@@ -247,30 +247,31 @@ export class EmailProcessingStack extends Construct {
       )
     );
 
-    // CloudWatch log groups
-    new logs.LogGroup(this, "InboundProcessorLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/inbound-processor`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // Import log groups (import-safe: won't fail if they already exist from
+    // a previous partial deployment).
+    logs.LogGroup.fromLogGroupName(
+      this,
+      "InboundProcessorLogGroup",
+      `/mailforge/${props.environment}/inbound-processor`
+    );
 
-    new logs.LogGroup(this, "OutboundSenderLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/outbound-sender`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    logs.LogGroup.fromLogGroupName(
+      this,
+      "OutboundSenderLogGroup",
+      `/mailforge/${props.environment}/outbound-sender`
+    );
 
-    new logs.LogGroup(this, "SESEventProcessorLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/ses-event-processor`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    logs.LogGroup.fromLogGroupName(
+      this,
+      "SESEventProcessorLogGroup",
+      `/mailforge/${props.environment}/ses-event-processor`
+    );
 
-    new logs.LogGroup(this, "WebhookDispatcherLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/webhook-dispatcher`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    logs.LogGroup.fromLogGroupName(
+      this,
+      "WebhookDispatcherLogGroup",
+      `/mailforge/${props.environment}/webhook-dispatcher`
+    );
 
     // Outputs
     new cdk.CfnOutput(this, "InboundProcessorFunctionName", {
