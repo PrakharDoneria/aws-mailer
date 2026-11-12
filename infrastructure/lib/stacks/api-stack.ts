@@ -1,0 +1,624 @@
+import * as cdk from "aws-cdk-lib";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as logs from "aws-cdk-lib/aws-logs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import { Construct } from "constructs";
+import { DatabaseStack } from "./database-stack";
+import { StorageStack } from "./storage-stack";
+import { QueueStack } from "./queue-stack";
+import { EmailStack } from "./email-stack";
+import * as path from "path";
+
+export interface ApiStackProps {
+  environment: string;
+  userPool: cognito.UserPool;
+  userPoolClient: cognito.UserPoolClient;
+  dynamoDb: DatabaseStack;
+  storageStack: StorageStack;
+  queueStack: QueueStack;
+  emailStack: EmailStack;
+}
+
+export class ApiStack extends Construct {
+  public readonly api: apigateway.RestApi;
+  public readonly apiEndpoint: string;
+  public readonly lambdaRole: iam.Role;
+
+  constructor(scope: Construct, id: string, props: ApiStackProps) {
+    super(scope, id);
+
+    // Create IAM role for Lambda functions
+    this.lambdaRole = new iam.Role(this, "LambdaRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
+    });
+
+    // Grant DynamoDB permissions
+    props.dynamoDb.organizationsTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.usersTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.membershipsTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.domainsTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.mailboxesTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.messagesTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.attachmentsTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.apiKeysTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.webhooksTable.grantReadWriteData(this.lambdaRole);
+    props.dynamoDb.webhookDeliveriesTable.grantReadWriteData(this.lambdaRole);
+
+    // Grant S3 permissions
+    props.storageStack.emailBucket.grantReadWrite(this.lambdaRole);
+    props.storageStack.attachmentsBucket.grantReadWrite(this.lambdaRole);
+    props.storageStack.frontendBucket.grantRead(this.lambdaRole);
+
+    // Grant SQS permissions
+    props.queueStack.inboundQueue.grantSendMessages(this.lambdaRole);
+    props.queueStack.inboundQueue.grantConsumeMessages(this.lambdaRole);
+    props.queueStack.outboundQueue.grantSendMessages(this.lambdaRole);
+    props.queueStack.outboundQueue.grantConsumeMessages(this.lambdaRole);
+    props.queueStack.webhookQueue.grantSendMessages(this.lambdaRole);
+    props.queueStack.webhookQueue.grantConsumeMessages(this.lambdaRole);
+
+    // Grant KMS permissions
+    props.storageStack.encryptionKey.grantEncryptDecrypt(this.lambdaRole);
+    props.queueStack.encryptionKey.grantEncryptDecrypt(this.lambdaRole);
+
+    // Grant SES permissions for sending emails
+    this.lambdaRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "ses:SendEmail",
+          "ses:SendRawEmail",
+          "ses:GetAccountSendingEnabled",
+        ],
+        resources: ["*"],
+      })
+    );
+
+    // Create REST API Gateway
+    this.api = new apigateway.RestApi(this, "API", {
+      restApiName: `mailforge-${props.environment}-api`,
+      description: "MailForge API Gateway",
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: [
+          "Content-Type",
+          "Authorization",
+          "X-Amz-Date",
+          "X-Api-Key",
+        ],
+      },
+      deployOptions: {
+        stageName: props.environment,
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true,
+        metricsEnabled: true,
+      },
+    });
+
+    this.apiEndpoint = this.api.url;
+
+    // Create CloudWatch log group
+    const logGroup = new logs.LogGroup(this, "ApiLogGroup", {
+      logGroupName: `/mailforge/${props.environment}/api`,
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Grant CloudWatch permissions
+    this.lambdaRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:CreateLogGroup",
+        ],
+        resources: [`arn:aws:logs:*:*:*`],
+      })
+    );
+
+    // Create authorizer using Cognito
+    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(
+      this,
+      "Authorizer",
+      {
+        cognitoUserPools: [props.userPool],
+        identitySource: "method.request.header.Authorization",
+      }
+    );
+
+    // Add root resource and methods
+    const v1Resource = this.api.root.addResource("v1");
+
+    // Authentication endpoints (public, no auth required)
+    const authResource = v1Resource.addResource("auth");
+    
+    const signUpResource = authResource.addResource("sign-up");
+    signUpResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "SignUp",
+        props,
+        "handlers/auth/sign-up"
+      )
+    );
+
+    const signInResource = authResource.addResource("sign-in");
+    signInResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "SignIn",
+        props,
+        "handlers/auth/sign-in"
+      )
+    );
+
+    // Protected auth endpoints
+    const profileResource = authResource.addResource("profile");
+    profileResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetProfile",
+        props,
+        "handlers/auth/profile"
+      ),
+      { authorizer }
+    );
+
+    profileResource.addMethod(
+      "PATCH",
+      this.createLambdaIntegration(
+        "UpdateProfile",
+        props,
+        "handlers/auth/update-profile"
+      ),
+      { authorizer }
+    );
+
+    const signOutResource = authResource.addResource("sign-out");
+    signOutResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "SignOut",
+        props,
+        "handlers/auth/sign-out"
+      ),
+      { authorizer }
+    );
+
+    // Organizations endpoints
+    const orgsResource = v1Resource.addResource("organizations");
+    orgsResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateOrganization",
+        props,
+        "handlers/organizations/create"
+      )
+    );
+    orgsResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListOrganizations",
+        props,
+        "handlers/organizations/list"
+      ),
+      { authorizer }
+    );
+
+    const orgIdResource = orgsResource.addResource("{id}");
+    orgIdResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetOrganization",
+        props,
+        "handlers/organizations/get"
+      ),
+      { authorizer }
+    );
+    orgIdResource.addMethod(
+      "PATCH",
+      this.createLambdaIntegration(
+        "UpdateOrganization",
+        props,
+        "handlers/organizations/update"
+      ),
+      { authorizer }
+    );
+
+    // Team management endpoints
+    const teamResource = orgIdResource.addResource("team");
+    
+    const membersResource = teamResource.addResource("members");
+    membersResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListMembers",
+        props,
+        "handlers/teams/list-members"
+      ),
+      { authorizer }
+    );
+
+    membersResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "InviteMember",
+        props,
+        "handlers/teams/invite-member"
+      ),
+      { authorizer }
+    );
+
+    const memberIdResource = membersResource.addResource("{userId}");
+    memberIdResource.addMethod(
+      "PATCH",
+      this.createLambdaIntegration(
+        "UpdateMemberRole",
+        props,
+        "handlers/teams/update-member-role"
+      ),
+      { authorizer }
+    );
+
+    memberIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "RemoveMember",
+        props,
+        "handlers/teams/remove-member"
+      ),
+      { authorizer }
+    );
+
+    // Domains endpoints
+    const domainsResource = v1Resource.addResource("domains");
+    domainsResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateDomain",
+        props,
+        "handlers/domains/create"
+      ),
+      { authorizer }
+    );
+    domainsResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListDomains",
+        props,
+        "handlers/domains/list"
+      ),
+      { authorizer }
+    );
+
+    const domainIdResource = domainsResource.addResource("{id}");
+    domainIdResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetDomain",
+        props,
+        "handlers/domains/get"
+      ),
+      { authorizer }
+    );
+    domainIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteDomain",
+        props,
+        "handlers/domains/delete"
+      ),
+      { authorizer }
+    );
+
+    const verifyResource = domainIdResource.addResource("verify");
+    verifyResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "VerifyDomain",
+        props,
+        "handlers/domains/verify"
+      ),
+      { authorizer }
+    );
+
+    const dnsRecordsResource = domainIdResource.addResource("dns-records");
+    dnsRecordsResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetDNSRecords",
+        props,
+        "handlers/domains/get-dns-records"
+      ),
+      { authorizer }
+    );
+
+    // Mailboxes endpoints
+    const mailboxesResource = v1Resource.addResource("mailboxes");
+    mailboxesResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateMailbox",
+        props,
+        "handlers/mailboxes/create"
+      ),
+      { authorizer }
+    );
+    mailboxesResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListMailboxes",
+        props,
+        "handlers/mailboxes/list"
+      ),
+      { authorizer }
+    );
+
+    const mailboxIdResource = mailboxesResource.addResource("{id}");
+    mailboxIdResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetMailbox",
+        props,
+        "handlers/mailboxes/get"
+      ),
+      { authorizer }
+    );
+    mailboxIdResource.addMethod(
+      "PATCH",
+      this.createLambdaIntegration(
+        "UpdateMailbox",
+        props,
+        "handlers/mailboxes/update"
+      ),
+      { authorizer }
+    );
+    mailboxIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteMailbox",
+        props,
+        "handlers/mailboxes/delete"
+      ),
+      { authorizer }
+    );
+
+    // Mailbox aliases
+    const aliasesResource = mailboxIdResource.addResource("aliases");
+    aliasesResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateAlias",
+        props,
+        "handlers/mailboxes/create-alias"
+      ),
+      { authorizer }
+    );
+    aliasesResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListAliases",
+        props,
+        "handlers/mailboxes/list-aliases"
+      ),
+      { authorizer }
+    );
+
+    // Messages endpoints
+    const messagesResource = v1Resource.addResource("messages");
+    messagesResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListMessages",
+        props,
+        "handlers/messages/list"
+      ),
+      { authorizer }
+    );
+
+    const messageIdResource = messagesResource.addResource("{id}");
+    messageIdResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "GetMessage",
+        props,
+        "handlers/messages/get"
+      ),
+      { authorizer }
+    );
+    messageIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteMessage",
+        props,
+        "handlers/messages/delete"
+      ),
+      { authorizer }
+    );
+
+    // Send email endpoint
+    const sendEmailResource = messagesResource.addResource("send");
+    sendEmailResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "SendEmail",
+        props,
+        "handlers/emails/send"
+      ),
+      { authorizer }
+    );
+
+    // Drafts endpoints
+    const draftsResource = messagesResource.addResource("drafts");
+    draftsResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateDraft",
+        props,
+        "handlers/emails/create-draft"
+      ),
+      { authorizer }
+    );
+    draftsResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListDrafts",
+        props,
+        "handlers/emails/list-drafts"
+      ),
+      { authorizer }
+    );
+
+    const draftIdResource = draftsResource.addResource("{draftId}");
+    draftIdResource.addMethod(
+      "PATCH",
+      this.createLambdaIntegration(
+        "UpdateDraft",
+        props,
+        "handlers/emails/update-draft"
+      ),
+      { authorizer }
+    );
+    draftIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteDraft",
+        props,
+        "handlers/emails/delete-draft"
+      ),
+      { authorizer }
+    );
+
+    // Send draft endpoint
+    const sendDraftResource = draftIdResource.addResource("send");
+    sendDraftResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "SendDraft",
+        props,
+        "handlers/emails/send-draft"
+      ),
+      { authorizer }
+    );
+
+    // API Keys endpoints
+    const keysResource = v1Resource.addResource("api-keys");
+    keysResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateAPIKey",
+        props,
+        "handlers/api-keys/create"
+      ),
+      { authorizer }
+    );
+    keysResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListAPIKeys",
+        props,
+        "handlers/api-keys/list"
+      ),
+      { authorizer }
+    );
+
+    const keyIdResource = keysResource.addResource("{id}");
+    keyIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteAPIKey",
+        props,
+        "handlers/api-keys/delete"
+      ),
+      { authorizer }
+    );
+
+    // Webhooks endpoints
+    const webhooksResource = v1Resource.addResource("webhooks");
+    webhooksResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateWebhook",
+        props,
+        "handlers/webhooks/create"
+      ),
+      { authorizer }
+    );
+    webhooksResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListWebhooks",
+        props,
+        "handlers/webhooks/list"
+      ),
+      { authorizer }
+    );
+
+    const webhookIdResource = webhooksResource.addResource("{id}");
+    webhookIdResource.addMethod(
+      "DELETE",
+      this.createLambdaIntegration(
+        "DeleteWebhook",
+        props,
+        "handlers/webhooks/delete"
+      ),
+      { authorizer }
+    );
+
+    new cdk.CfnOutput(this, "ApiEndpointOutput", {
+      value: this.apiEndpoint,
+      description: "API Gateway endpoint",
+    });
+  }
+
+  private createLambdaIntegration(
+    functionName: string,
+    props: ApiStackProps,
+    handlerPath: string
+  ): apigateway.LambdaIntegration {
+    const fn = new lambda.Function(this, functionName, {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: `${handlerPath}.handler`,
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, "../../../apps/api/dist")
+      ),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      role: this.lambdaRole,
+      environment: {
+        ENVIRONMENT: props.environment,
+        ORGANIZATIONS_TABLE: props.dynamoDb.organizationsTable.tableName,
+        USERS_TABLE: props.dynamoDb.usersTable.tableName,
+        MEMBERSHIPS_TABLE: props.dynamoDb.membershipsTable.tableName,
+        DOMAINS_TABLE: props.dynamoDb.domainsTable.tableName,
+        MAILBOXES_TABLE: props.dynamoDb.mailboxesTable.tableName,
+        MESSAGES_TABLE: props.dynamoDb.messagesTable.tableName,
+        ATTACHMENTS_TABLE: props.dynamoDb.attachmentsTable.tableName,
+        API_KEYS_TABLE: props.dynamoDb.apiKeysTable.tableName,
+        WEBHOOKS_TABLE: props.dynamoDb.webhooksTable.tableName,
+        WEBHOOK_DELIVERIES_TABLE:
+          props.dynamoDb.webhookDeliveriesTable.tableName,
+        EMAIL_BUCKET: props.storageStack.emailBucket.bucketName,
+        ATTACHMENTS_BUCKET: props.storageStack.attachmentsBucket.bucketName,
+        INBOUND_QUEUE_URL: props.queueStack.inboundQueue.queueUrl,
+        OUTBOUND_QUEUE_URL: props.queueStack.outboundQueue.queueUrl,
+        WEBHOOK_QUEUE_URL: props.queueStack.webhookQueue.queueUrl,
+        COGNITO_USER_POOL_ID: props.userPool.userPoolId,
+        COGNITO_USER_POOL_CLIENT_ID: props.userPoolClient.userPoolClientId,
+      },
+    });
+
+    return new apigateway.LambdaIntegration(fn, {
+      proxy: true,
+    });
+  }
+}

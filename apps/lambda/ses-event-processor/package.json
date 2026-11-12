@@ -1,0 +1,22 @@
+{
+  "name": "@mailforge/ses-event-processor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/client-sqs": "^3.450.0",
+    "@aws-sdk/util-dynamodb": "^3.450.0",
+    "@mailforge/shared": "^0.1.0",
+    "aws-lambda": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}

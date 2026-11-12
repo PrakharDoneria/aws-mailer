@@ -1,0 +1,21 @@
+{
+  "name": "@mailforge/email-parser",
+  "version": "0.1.0",
+  "description": "Email parsing utilities for MailForge",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mailforge/shared": "^0.1.0",
+    "mailparser": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/mailparser": "^3.4.4",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply box-border;
+}
+
+body {
+  @apply antialiased;
+}
+
+a {
+  @apply text-primary-600 hover:text-primary-700 no-underline;
+}
+
+button {
+  @apply transition-colors duration-200;
+}
+
+input,
+textarea,
+select {
+  @apply transition-colors duration-200;
+}

@@ -1,0 +1,36 @@
+{
+  "name": "mailforge",
+  "version": "0.1.0",
+  "description": "Serverless email hosting platform on AWS",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "apps/lambda/*",
+    "packages/*",
+    "infrastructure"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "cdk:bootstrap": "cd infrastructure && npm run bootstrap",
+    "cdk:deploy": "cd infrastructure && npm run deploy",
+    "cdk:destroy": "cd infrastructure && npm run destroy",
+    "cloudshell:delete": "bash scripts/delete-cloudshell.sh",
+    "cdk:logs": "cd infrastructure && npm run logs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "turbo": "^1.10.16",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
