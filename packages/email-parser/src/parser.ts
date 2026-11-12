@@ -4,7 +4,6 @@
 
 import { simpleParser } from "mailparser";
 import { Readable } from "stream";
-import { Attachment as ParsedAttachment } from "mailparser";
 import { Attachment } from "@mailforge/shared";
 
 export interface ParsedEmail {
@@ -31,13 +30,11 @@ export async function parseMimeEmail(
   const parsed = await simpleParser(stream);
 
   // Parse recipients
-  const from = Array.isArray(parsed.from?.value)
-    ? parsed.from.value[0]?.address || ""
-    : parsed.from?.value?.[0]?.address || "";
+  const from = normalizeAddresses(parsed.from)[0] || "";
 
-  const toAddresses = normalizeAddresses(parsed.to?.value || []);
-  const ccAddresses = normalizeAddresses(parsed.cc?.value || []);
-  const bccAddresses = normalizeAddresses(parsed.bcc?.value || []);
+  const toAddresses = normalizeAddresses(parsed.to);
+  const ccAddresses = normalizeAddresses(parsed.cc);
+  const bccAddresses = normalizeAddresses(parsed.bcc);
 
   // Parse body
   const textBody = parsed.text || "";
@@ -69,7 +66,7 @@ export async function parseMimeEmail(
   const headers = new Map<string, string | string[]>();
   if (parsed.headers) {
     for (const [key, value] of parsed.headers.entries()) {
-      headers.set(key.toLowerCase(), value);
+      headers.set(key.toLowerCase(), normalizeHeaderValue(value));
     }
   }
 
@@ -105,20 +102,43 @@ export async function parseMimeEmail(
 }
 
 function normalizeAddresses(
-  addresses: unknown[] | string | { address: string }[]
+  addresses:
+    | unknown[]
+    | string
+    | { address?: string }[]
+    | { value?: { address?: string }[] }
+    | undefined
 ): string[] {
   if (!addresses) return [];
+  if (!Array.isArray(addresses) && typeof addresses === "object" && "value" in addresses) {
+    return normalizeAddresses(addresses.value);
+  }
   if (typeof addresses === "string") return [addresses];
   if (Array.isArray(addresses)) {
     return addresses.flatMap((addr) => {
       if (typeof addr === "string") return [addr];
       if (addr && typeof addr === "object" && "address" in addr) {
-        return [(addr as { address: string }).address];
+        const address = (addr as { address?: string }).address;
+        return address ? [address] : [];
       }
       return [];
     });
   }
   return [];
+}
+
+function normalizeHeaderValue(value: unknown): string | string[] {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      typeof item === "string"
+        ? item
+        : item && typeof item === "object" && "address" in item
+          ? String((item as { address?: string }).address || "")
+          : String(item)
+    );
+  }
+  return String(value);
 }
 
 export function extractEmailAddresses(emailString: string): string[] {

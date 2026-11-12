@@ -183,7 +183,7 @@ export class DomainService {
 
       if (
         attributes.VerificationStatus !== "Success" &&
-        attributes.VerificationStatus !== "VerificationInProgress"
+        attributes.VerificationStatus !== "Pending"
       ) {
         throw new MailForgeError(
           ErrorCodes.DOMAIN_VERIFICATION_FAILED,

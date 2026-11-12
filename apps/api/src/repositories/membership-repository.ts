@@ -32,7 +32,7 @@ export class MembershipRepository extends BaseRepository<OrganizationMembership>
     userId: string,
     role: UserRole
   ): Promise<OrganizationMembership> {
-    return super.update(
+    return super.updateItem(
       { organizationId, userId },
       "SET #role = :role",
       { "#role": "role" },
@@ -41,6 +41,6 @@ export class MembershipRepository extends BaseRepository<OrganizationMembership>
   }
 
   async remove(organizationId: string, userId: string): Promise<void> {
-    await super.delete({ organizationId, userId });
+    await super.deleteItem({ organizationId, userId });
   }
 }

@@ -35,7 +35,7 @@ export class APIKeyRepository extends BaseRepository<APIKey> {
   }
 
   async revoke(id: string): Promise<APIKey> {
-    return super.update(
+    return super.updateItem(
       { id },
       "SET revokedAt = :now",
       undefined,
@@ -44,6 +44,6 @@ export class APIKeyRepository extends BaseRepository<APIKey> {
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }

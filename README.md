@@ -15,10 +15,16 @@
 Open AWS CloudShell and run:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/prakhardoneria/aws-mailer/main/scripts/deploy-cloudshell.sh)
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
 ```
 
 **No local installation needed!** CloudShell has everything pre-installed.
+
+To patch an existing `mailforge-prod` deployment without deleting resources:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+```
 
 👉 [Full CloudShell Guide](./CLOUDSHELL_DEPLOYMENT.md)
 

@@ -24,7 +24,7 @@ export class FrontendStack extends Construct {
     // Create CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
-        origin: new origins.S3Origin(this.bucket),
+        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
         viewerProtocolPolicy:
           cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,

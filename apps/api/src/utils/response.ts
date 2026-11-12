@@ -23,12 +23,13 @@ export function errorResponse(
   error: unknown,
   statusCode?: number
 ): APIGatewayProxyResult {
-  let errorCode = ErrorCodes.INTERNAL_ERROR;
+  let errorCode: (typeof ErrorCodes)[keyof typeof ErrorCodes] =
+    ErrorCodes.INTERNAL_ERROR;
   let message = "Internal server error";
   let finalStatusCode = 500;
 
   if (error instanceof MailForgeError) {
-    errorCode = error.code;
+    errorCode = error.code as (typeof ErrorCodes)[keyof typeof ErrorCodes];
     message = error.message;
     finalStatusCode = error.statusCode;
   } else if (error instanceof Error) {

@@ -37,7 +37,7 @@ export class UserRepository extends BaseRepository<User> {
       expressionAttributeNames[`#${key}`] = key;
     });
 
-    return super.update(
+    return super.updateItem(
       { id },
       `SET ${updateExpressions.join(", ")}`,
       expressionAttributeNames,
@@ -46,6 +46,6 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }

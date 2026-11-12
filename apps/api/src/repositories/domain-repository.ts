@@ -51,7 +51,7 @@ export class DomainRepository extends BaseRepository<Domain> {
     updateExpressions.push(`updatedAt = :now`);
     expressionAttributeValues[":now"] = Math.floor(Date.now() / 1000);
 
-    return super.update(
+    return super.updateItem(
       { id },
       `SET ${updateExpressions.join(", ")}`,
       expressionAttributeNames,
@@ -64,6 +64,6 @@ export class DomainRepository extends BaseRepository<Domain> {
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }

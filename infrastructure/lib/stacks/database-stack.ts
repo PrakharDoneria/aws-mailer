@@ -29,7 +29,9 @@ export class DatabaseStack extends Construct {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.organizationsTable.addGlobalSecondaryIndex({
@@ -44,7 +46,9 @@ export class DatabaseStack extends Construct {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.usersTable.addGlobalSecondaryIndex({
@@ -71,7 +75,9 @@ export class DatabaseStack extends Construct {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.domainsTable.addGlobalSecondaryIndex({
@@ -99,7 +105,9 @@ export class DatabaseStack extends Construct {
       partitionKey: { name: "id", type: dynamodb.AttributeType.STRING },
       billingMode,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.mailboxesTable.addGlobalSecondaryIndex({
@@ -122,7 +130,9 @@ export class DatabaseStack extends Construct {
       sortKey: { name: "createdAt", type: dynamodb.AttributeType.NUMBER },
       billingMode,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: true,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.messagesTable.addGlobalSecondaryIndex({

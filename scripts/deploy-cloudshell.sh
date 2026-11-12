@@ -92,9 +92,7 @@ build_typescript() {
   local config="$1"
   local output="$2"
   log "Building ${config}"
-  if ! npx tsc -p "$config" --noEmitOnError false; then
-    echo "Warning: ${config} reported TypeScript errors; continuing with emitted deployment assets." >&2
-  fi
+  npx tsc -p "$config"
   [[ -f "$output" ]] || fail "Build did not produce ${output}"
 }
 

@@ -1,5 +1,6 @@
 import { Mailbox, MailboxStatus } from "@mailforge/shared";
 import { BaseRepository } from "./base-repository";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 export class MailboxRepository extends BaseRepository<Mailbox> {
   constructor() {
@@ -62,7 +63,7 @@ export class MailboxRepository extends BaseRepository<Mailbox> {
     updateExpressions.push(`updatedAt = :now`);
     expressionAttributeValues[":now"] = Math.floor(Date.now() / 1000);
 
-    return super.update(
+    return super.updateItem(
       { id },
       `SET ${updateExpressions.join(", ")}`,
       expressionAttributeNames,
@@ -76,27 +77,22 @@ export class MailboxRepository extends BaseRepository<Mailbox> {
 
   async incrementUnreadCount(id: string): Promise<void> {
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
         Key: { id: { S: id } },
         UpdateExpression: "SET unreadCount = unreadCount + :inc",
-        ExpressionAttributeValues: {
-          ":inc": { N: "1" },
-        },
+        ExpressionAttributeValues: { ":inc": 1 },
       })
     );
   }
 
   async decrementUnreadCount(id: string): Promise<void> {
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
         Key: { id: { S: id } },
         UpdateExpression: "SET unreadCount = if_not_exists(unreadCount, :zero) - :dec",
-        ExpressionAttributeValues: {
-          ":zero": { N: "0" },
-          ":dec": { N: "1" },
-        },
+        ExpressionAttributeValues: { ":zero": 0, ":dec": 1 },
       })
     );
   }
@@ -106,18 +102,16 @@ export class MailboxRepository extends BaseRepository<Mailbox> {
     incrementBy: number
   ): Promise<void> {
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
         Key: { id: { S: id } },
         UpdateExpression: "SET storageUsed = storageUsed + :inc",
-        ExpressionAttributeValues: {
-          ":inc": { N: incrementBy.toString() },
-        },
+        ExpressionAttributeValues: { ":inc": incrementBy },
       })
     );
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }

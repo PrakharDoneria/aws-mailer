@@ -12,7 +12,7 @@ Deploy MailForge with a single command from AWS CloudShell - no local setup requ
 
 2. **Run One Command**
    ```bash
-   bash <(curl -s https://raw.githubusercontent.com/prakhardoneria/aws-mailer/main/scripts/deploy-cloudshell.sh)
+   bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
    ```
 
 3. **Wait for completion** (~15 minutes)
@@ -96,6 +96,10 @@ In the MailForge web interface:
 # Deploy to production environment
 ./scripts/deploy-cloudshell.sh prod
 
+# Patch an existing environment after code or infrastructure updates.
+# This inspects the existing stack first and never runs a delete/destroy command.
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+
 # Skip auto-cleanup on error
 ./scripts/deploy-cloudshell.sh dev false
 ```
@@ -167,7 +171,7 @@ checkout and retry:
 ```bash
 rm -rf ~/aws-mailer
 npm cache clean --force
-bash <(curl -s https://raw.githubusercontent.com/prakhardoneria/aws-mailer/main/scripts/deploy-cloudshell.sh) prod
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
 ```
 
 ### Common Issues

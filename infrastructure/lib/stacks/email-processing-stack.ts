@@ -87,7 +87,7 @@ export class EmailProcessingStack extends Construct {
       this,
       "InboundProcessor",
       {
-        runtime: lambda.Runtime.NODEJS_18_X,
+        runtime: lambda.Runtime.NODEJS_22_X,
         handler: "index.handler",
         code: lambda.Code.fromAsset(
           path.join(
@@ -130,7 +130,7 @@ export class EmailProcessingStack extends Construct {
       this,
       "OutboundSender",
       {
-        runtime: lambda.Runtime.NODEJS_18_X,
+        runtime: lambda.Runtime.NODEJS_22_X,
         handler: "index.handler",
         code: lambda.Code.fromAsset(
           path.join(
@@ -171,7 +171,7 @@ export class EmailProcessingStack extends Construct {
       this,
       "SESEventProcessor",
       {
-        runtime: lambda.Runtime.NODEJS_18_X,
+        runtime: lambda.Runtime.NODEJS_22_X,
         handler: "index.handler",
         code: lambda.Code.fromAsset(
           path.join(
@@ -202,7 +202,7 @@ export class EmailProcessingStack extends Construct {
       this,
       "WebhookDispatcher",
       {
-        runtime: lambda.Runtime.NODEJS_18_X,
+        runtime: lambda.Runtime.NODEJS_22_X,
         handler: "index.handler",
         code: lambda.Code.fromAsset(
           path.join(

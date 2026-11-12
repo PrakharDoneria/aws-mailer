@@ -231,3 +231,15 @@ Typical small deployment (~1000 users):
 - Data transfer: ~$0-5/month
 
 **Total**: ~$11-50/month for small deployments
+### Updating an existing CloudShell deployment
+
+Run the resource-aware patch command to apply backend, infrastructure, and
+frontend updates in place:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+```
+
+The command fails before changing anything when the expected CloudFormation
+stack or outputs are missing. Use `scripts/delete-cloudshell.sh` only when a
+complete teardown is intended.

@@ -1,27 +1,29 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
-  DynamoDBClient,
+  DeleteCommand,
+  DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
-  UpdateCommand,
-  DeleteCommand,
   QueryCommand,
   ScanCommand,
-} from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 export class BaseRepository<T> {
-  protected client: DynamoDBClient;
+  protected client: DynamoDBDocumentClient;
   protected tableName: string;
 
   constructor(tableName: string) {
     this.tableName = tableName;
-    this.client = new DynamoDBClient({ region: process.env.AWS_REGION });
+    this.client = DynamoDBDocumentClient.from(
+      new DynamoDBClient({ region: process.env.AWS_REGION })
+    );
   }
 
   async create(item: T): Promise<void> {
     const command = new PutCommand({
       TableName: this.tableName,
-      Item: marshall(item),
+      Item: item as Record<string, unknown>,
     });
     await this.client.send(command);
   }
@@ -29,13 +31,13 @@ export class BaseRepository<T> {
   async get(key: Record<string, any>): Promise<T | null> {
     const command = new GetCommand({
       TableName: this.tableName,
-      Key: marshall(key),
+      Key: key,
     });
     const response = await this.client.send(command);
-    return response.Item ? (unmarshall(response.Item) as T) : null;
+    return response.Item ? (response.Item as T) : null;
   }
 
-  async update(
+  protected async updateItem(
     key: Record<string, any>,
     updateExpression: string,
     expressionAttributeNames?: Record<string, string>,
@@ -43,20 +45,34 @@ export class BaseRepository<T> {
   ): Promise<T> {
     const command = new UpdateCommand({
       TableName: this.tableName,
-      Key: marshall(key),
+      Key: key,
       UpdateExpression: updateExpression,
       ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: marshall(expressionAttributeValues || {}),
+      ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: "ALL_NEW",
     });
     const response = await this.client.send(command);
-    return unmarshall(response.Attributes!) as T;
+    return response.Attributes as T;
   }
 
-  async delete(key: Record<string, any>): Promise<void> {
+  async updateRecord(
+    key: Record<string, any>,
+    updateExpression: string,
+    expressionAttributeNames?: Record<string, string>,
+    expressionAttributeValues?: Record<string, any>
+  ): Promise<T> {
+    return this.updateItem(
+      key,
+      updateExpression,
+      expressionAttributeNames,
+      expressionAttributeValues
+    );
+  }
+
+  protected async deleteItem(key: Record<string, any>): Promise<void> {
     const command = new DeleteCommand({
       TableName: this.tableName,
-      Key: marshall(key),
+      Key: key,
     });
     await this.client.send(command);
   }
@@ -73,20 +89,20 @@ export class BaseRepository<T> {
       TableName: this.tableName,
       KeyConditionExpression: keyConditionExpression,
       ExpressionAttributeValues: expressionAttributeValues
-        ? marshall(expressionAttributeValues)
+        ? expressionAttributeValues
         : undefined,
       ExpressionAttributeNames: expressionAttributeNames,
       IndexName: indexName,
       Limit: limit,
       ExclusiveStartKey: exclusiveStartKey
-        ? marshall(exclusiveStartKey)
+        ? exclusiveStartKey
         : undefined,
     });
     const response = await this.client.send(command);
     return {
-      items: (response.Items || []).map((item) => unmarshall(item) as T),
+      items: (response.Items || []) as T[],
       lastEvaluatedKey: response.LastEvaluatedKey
-        ? (unmarshall(response.LastEvaluatedKey) as Record<string, any>)
+        ? response.LastEvaluatedKey
         : undefined,
     };
   }
@@ -101,16 +117,16 @@ export class BaseRepository<T> {
       TableName: this.tableName,
       FilterExpression: filterExpression,
       ExpressionAttributeValues: expressionAttributeValues
-        ? marshall(expressionAttributeValues)
+        ? expressionAttributeValues
         : undefined,
       ExpressionAttributeNames: expressionAttributeNames,
       Limit: limit,
     });
     const response = await this.client.send(command);
     return {
-      items: (response.Items || []).map((item) => unmarshall(item) as T),
+      items: (response.Items || []) as T[],
       lastEvaluatedKey: response.LastEvaluatedKey
-        ? (unmarshall(response.LastEvaluatedKey) as Record<string, any>)
+        ? response.LastEvaluatedKey
         : undefined,
     };
   }

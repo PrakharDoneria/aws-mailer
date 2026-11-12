@@ -36,6 +36,6 @@ export class MailboxAliasRepository extends BaseRepository<MailboxAlias> {
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }

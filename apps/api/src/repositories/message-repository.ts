@@ -1,5 +1,6 @@
 import { Message } from "@mailforge/shared";
 import { BaseRepository } from "./base-repository";
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 export class MessageRepository extends BaseRepository<Message> {
   constructor() {
@@ -66,17 +67,14 @@ export class MessageRepository extends BaseRepository<Message> {
   ): Promise<void> {
     // Update status in message
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
-        Key: {
-          mailboxId: { S: mailboxId },
-          createdAt: { N: Math.floor(Date.now() / 1000).toString() },
-        },
+        Key: { mailboxId, createdAt: Math.floor(Date.now() / 1000) },
         UpdateExpression: "SET #status = :status, updatedAt = :now",
         ExpressionAttributeNames: { "#status": "status" },
         ExpressionAttributeValues: {
-          ":status": { S: status },
-          ":now": { N: Math.floor(Date.now() / 1000).toString() },
+          ":status": status,
+          ":now": Math.floor(Date.now() / 1000),
         },
       })
     );
@@ -87,15 +85,12 @@ export class MessageRepository extends BaseRepository<Message> {
     messageId: string
   ): Promise<void> {
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
-        Key: {
-          mailboxId: { S: mailboxId },
-          messageId: { S: messageId },
-        },
+        Key: { mailboxId, messageId },
         UpdateExpression: "SET isRead = :true",
         ExpressionAttributeValues: {
-          ":true": { BOOL: true },
+          ":true": true,
         },
       })
     );
@@ -106,21 +101,18 @@ export class MessageRepository extends BaseRepository<Message> {
     messageId: string
   ): Promise<void> {
     await this.client.send(
-      new (require("@aws-sdk/client-dynamodb").UpdateCommand)({
+      new UpdateCommand({
         TableName: this.tableName,
-        Key: {
-          mailboxId: { S: mailboxId },
-          messageId: { S: messageId },
-        },
+        Key: { mailboxId, messageId },
         UpdateExpression: "SET isRead = :false",
         ExpressionAttributeValues: {
-          ":false": { BOOL: false },
+          ":false": false,
         },
       })
     );
   }
 
   async delete(mailboxId: string, createdAt: number): Promise<void> {
-    await super.delete({ mailboxId, createdAt });
+    await super.deleteItem({ mailboxId, createdAt });
   }
 }

@@ -185,7 +185,7 @@ async function processBounce(
 
   // Publish webhook event
   await publishWebhookEvent({
-    type: bounceType === "Permanent" ? "bounce" : "failed",
+    type: "bounce",
     messageId,
     organizationId,
     timestamp: Date.now(),

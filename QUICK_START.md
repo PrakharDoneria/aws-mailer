@@ -30,6 +30,20 @@ Before running the deployment script, ensure you have:
 
 ## One-Command Deployment
 
+For AWS CloudShell, use the cache-busting command below so the latest script is
+downloaded:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
+```
+
+For an existing environment, patch in place after the script prints its
+resource inventory:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+```
+
 ### For Windows (PowerShell):
 
 ```powershell

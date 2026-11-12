@@ -1,10 +1,13 @@
-import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { errorResponse } from "./response";
 import { MailForgeError } from "@mailforge/shared";
 
-export function withErrorHandling(
-  handler: APIGatewayProxyHandler
-): APIGatewayProxyHandler {
+type AsyncHandler = (
+  event: APIGatewayProxyEvent,
+  context: Context
+) => Promise<APIGatewayProxyResult>;
+
+export function withErrorHandling(handler: AsyncHandler): AsyncHandler {
   return async (event, context) => {
     try {
       console.log("Incoming request:", {
@@ -35,7 +38,7 @@ export function withValidation(
   schema: any,
   source: "body" | "query" | "path" = "body"
 ) {
-  return (handler: APIGatewayProxyHandler): APIGatewayProxyHandler => {
+  return (handler: AsyncHandler): AsyncHandler => {
     return async (event, context) => {
       try {
         let data: any;

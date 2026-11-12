@@ -3,7 +3,6 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cognito from "aws-cdk-lib/aws-cognito";
-import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
@@ -105,13 +104,6 @@ export class ApiStack extends Construct {
     });
 
     this.apiEndpoint = this.api.url;
-
-    // Create CloudWatch log group
-    const logGroup = new logs.LogGroup(this, "ApiLogGroup", {
-      logGroupName: `/mailforge/${props.environment}/api`,
-      retention: logs.RetentionDays.ONE_MONTH,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
 
     // Grant CloudWatch permissions
     this.lambdaRole.addToPrincipalPolicy(
@@ -586,7 +578,7 @@ export class ApiStack extends Construct {
     handlerPath: string
   ): apigateway.LambdaIntegration {
     const fn = new lambda.Function(this, functionName, {
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: `${handlerPath}.handler`,
       code: lambda.Code.fromAsset(
         path.join(__dirname, "../../../apps/api/dist")

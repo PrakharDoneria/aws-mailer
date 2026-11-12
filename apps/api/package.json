@@ -16,6 +16,7 @@
     "@aws-sdk/client-s3": "^3.450.0",
     "@aws-sdk/client-ses": "^3.450.0",
     "@aws-sdk/client-sqs": "^3.450.0",
+    "@aws-sdk/lib-dynamodb": "^3.450.0",
     "@mailforge/shared": "^0.1.0",
     "@mailforge/validation": "^0.1.0",
     "@mailforge/email-parser": "^0.1.0",

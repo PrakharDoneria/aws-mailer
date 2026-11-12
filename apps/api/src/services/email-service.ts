@@ -153,12 +153,9 @@ export class EmailService {
   ): Promise<Message> {
     try {
       // Validate mailbox exists and belongs to org
-      const mailbox = await this.mailboxService.getMailbox(
-        organizationId,
-        input.mailboxId
-      );
+      const mailbox = await this.mailboxService.getMailbox(input.mailboxId);
 
-      if (!mailbox) {
+      if (mailbox.organizationId !== organizationId) {
         throw new MailForgeError(
           ErrorCodes.NOT_FOUND,
           "Mailbox not found",
@@ -281,7 +278,7 @@ export class EmailService {
       }
 
       // Update the draft
-      const updated = await this.messageRepository.update(
+      const updated = await this.messageRepository.updateRecord(
         { mailboxId: draft.mailboxId, createdAt: draft.createdAt },
         "SET #subject = :subject, #from = :from, #to = :to, #cc = :cc, #bcc = :bcc, textBody = :textBody, htmlBody = :htmlBody, updatedAt = :now",
         {
@@ -371,7 +368,7 @@ export class EmailService {
 
       // Update draft status to queued
       const now = getCurrentTimestamp();
-      const message = await this.messageRepository.update(
+      const message = await this.messageRepository.updateRecord(
         { mailboxId: draft.mailboxId, createdAt: draft.createdAt },
         "SET #status = :queued, sentAt = :now, updatedAt = :now",
         { "#status": "status" },

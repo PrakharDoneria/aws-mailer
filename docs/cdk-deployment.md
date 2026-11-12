@@ -423,3 +423,18 @@ aws cloudformation describe-stack-events \
 - [CloudFormation User Guide](https://docs.aws.amazon.com/cloudformation/)
 - [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/)
 - [Amazon DynamoDB Developer Guide](https://docs.aws.amazon.com/dynamodb/)
+## CloudShell deployment and in-place patches
+
+Deploy production and receive the CloudFront URL printed by the script:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
+```
+
+For an existing stack, use the patch script. It inventories the CloudFormation
+resources and outputs first, then runs CDK deploy and republishes the frontend
+without destroying the stack:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+```

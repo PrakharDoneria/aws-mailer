@@ -29,7 +29,7 @@ export class OrganizationRepository extends BaseRepository<Organization> {
     updateExpressions.push(`updatedAt = :now`);
     expressionAttributeValues[":now"] = Math.floor(Date.now() / 1000);
 
-    return super.update(
+    return super.updateItem(
       { id },
       `SET ${updateExpressions.join(", ")}`,
       expressionAttributeNames,
@@ -48,6 +48,6 @@ export class OrganizationRepository extends BaseRepository<Organization> {
   }
 
   async delete(id: string): Promise<void> {
-    await super.delete({ id });
+    await super.deleteItem({ id });
   }
 }
