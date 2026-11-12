@@ -7,7 +7,7 @@ REPO_URL="https://github.com/prakhardoneria/aws-mailer.git"
 DEPLOY_ROOT="${TMPDIR:-/tmp}/mailforge-deploy-${ENVIRONMENT}-$$"
 REPO_DIR="${DEPLOY_ROOT}/aws-mailer"
 NPM_CACHE_DIR="${TMPDIR:-/tmp}/mailforge-npm-cache-${ENVIRONMENT}-$$"
-SCRIPT_VERSION="2026-11-13-set-e-safe-concurrency"
+SCRIPT_VERSION="2026-11-13-nuke-failed-stack-first"
 
 if [[ ! "$ENVIRONMENT" =~ ^(dev|prod)$ ]]; then
   echo "Usage: $0 [dev|prod]" >&2
@@ -160,94 +160,137 @@ bootstrap_cdk() {
 
 # ---------------------------------------------------------------------------
 # purge_orphaned_resources
-# Detects and removes resources that were left behind by a previous failed
-# CloudFormation deployment/rollback.  Only resources that are NOT currently
-# tracked by any CloudFormation stack in this account/region are removed.
-# S3 buckets are emptied before deletion.  DynamoDB tables and CloudWatch
-# log groups are deleted directly.
+#
+# Strategy (most reliable approach):
+#  1. If the app CFN stack is in a terminal-failed state (ROLLBACK_COMPLETE,
+#     CREATE_FAILED, etc.) delete it first. That drops CFN's accounting of
+#     the RETAIN resources without destroying them, so the subsequent AWS CLI
+#     deletions below are not blocked by "still managed" false-positives.
+#  2. Unconditionally delete every physical MailForge resource by prefix.
+#     This covers DynamoDB, S3, SQS, SNS, CloudWatch log groups, and KMS.
+#     All deletions are wrapped in || true so a missing resource never aborts.
 # ---------------------------------------------------------------------------
-is_cfn_managed() {
-  # Returns 0 (true) if the resource is tracked by any CFN stack, 1 otherwise.
-  # Written to be safe under set -e: always exits 0 or 1, never traps.
-  local resource_id="$2"
-  local stack_name
-  stack_name=$(aws cloudformation describe-stack-resources \
-    --region "$REGION" \
-    --physical-resource-id "$resource_id" \
-    --query 'StackResources[0].StackName' \
-    --output text 2>/dev/null || true)
-  if [[ -n "$stack_name" && "$stack_name" != "None" ]]; then
-    return 0   # managed
-  fi
-  return 1     # orphaned
+
+# Empty an S3 bucket (all versions + delete markers) then remove it.
+_empty_and_delete_bucket() {
+  local bucket="$1"
+  log "  Emptying + deleting S3 bucket: ${bucket}"
+  # Versions
+  aws s3api list-object-versions \
+    --bucket "$bucket" --region "$REGION" \
+    --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
+    --output json 2>/dev/null \
+    | jq -c 'select(.Objects != null and (.Objects|length) > 0)' \
+    | while IFS= read -r batch; do
+        aws s3api delete-objects --bucket "$bucket" \
+          --delete "$batch" --region "$REGION" >/dev/null 2>&1 || true
+      done || true
+  # Delete markers
+  aws s3api list-object-versions \
+    --bucket "$bucket" --region "$REGION" \
+    --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
+    --output json 2>/dev/null \
+    | jq -c 'select(.Objects != null and (.Objects|length) > 0)' \
+    | while IFS= read -r batch; do
+        aws s3api delete-objects --bucket "$bucket" \
+          --delete "$batch" --region "$REGION" >/dev/null 2>&1 || true
+      done || true
+  aws s3 rb "s3://${bucket}" --force --region "$REGION" >/dev/null 2>&1 || true
 }
 
 purge_orphaned_resources() {
-  log "Scanning for orphaned MailForge resources in ${REGION} (from previous failed deployments)"
+  local PREFIX="mailforge-${ENVIRONMENT}-"
+  local app_stack_status
 
-  # -- DynamoDB tables -------------------------------------------------------
+  # ── Step 1: drop failed app CFN stack so RETAIN resources become untracked ─
+  app_stack_status=$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" --region "$REGION" \
+    --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)
+
+  case "$app_stack_status" in
+    ROLLBACK_COMPLETE|CREATE_FAILED|ROLLBACK_FAILED|DELETE_FAILED|UPDATE_ROLLBACK_COMPLETE)
+      log "App stack ${STACK_NAME} is in ${app_stack_status} — deleting it so retained resources become untracked"
+      aws cloudformation delete-stack --stack-name "$STACK_NAME" --region "$REGION" || true
+      log "  Waiting for stack deletion to complete..."
+      aws cloudformation wait stack-delete-complete \
+        --stack-name "$STACK_NAME" --region "$REGION" 2>/dev/null || true
+      log "  Stack deleted"
+      ;;
+    *_IN_PROGRESS)
+      log "WARNING: stack ${STACK_NAME} is busy (${app_stack_status}). Waiting 60s..."
+      sleep 60
+      ;;
+    ""|None)
+      log "No existing app stack found — fresh deploy"
+      ;;
+    *)
+      log "App stack ${STACK_NAME} is ${app_stack_status} — skipping stack deletion"
+      ;;
+  esac
+
+  log "Wiping all orphaned MailForge resources with prefix '${PREFIX}' in ${REGION}"
+
+  # ── DynamoDB tables ────────────────────────────────────────────────────────
   local tables
-  tables=$(aws dynamodb list-tables \
-    --region "$REGION" \
-    --query "TableNames[?starts_with(@, 'mailforge-${ENVIRONMENT}-')]" \
+  tables=$(aws dynamodb list-tables --region "$REGION" \
+    --query "TableNames[?starts_with(@,'${PREFIX}')]" \
     --output text 2>/dev/null || true)
   for table in $tables; do
-    if ! is_cfn_managed "AWS::DynamoDB::Table" "$table"; then
-      log "  Deleting orphaned DynamoDB table: ${table}"
-      aws dynamodb delete-table --table-name "$table" --region "$REGION" >/dev/null
-      aws dynamodb wait table-not-exists --table-name "$table" --region "$REGION" || true
-    fi
+    log "  Deleting DynamoDB table: ${table}"
+    aws dynamodb delete-table --table-name "$table" --region "$REGION" \
+      >/dev/null 2>&1 || true
+    aws dynamodb wait table-not-exists --table-name "$table" \
+      --region "$REGION" 2>/dev/null || true
   done
 
-  # -- S3 buckets ------------------------------------------------------------
+  # ── S3 buckets ─────────────────────────────────────────────────────────────
   local buckets
   buckets=$(aws s3api list-buckets \
-    --query "Buckets[?starts_with(Name, 'mailforge-${ENVIRONMENT}-')].Name" \
+    --query "Buckets[?starts_with(Name,'${PREFIX}')].Name" \
     --output text 2>/dev/null || true)
   for bucket in $buckets; do
-    if ! is_cfn_managed "AWS::S3::Bucket" "$bucket"; then
-      log "  Emptying + deleting orphaned S3 bucket: ${bucket}"
-      # Remove all object versions (including delete markers)
-      aws s3api list-object-versions \
-        --bucket "$bucket" --region "$REGION" \
-        --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
-        --output json 2>/dev/null \
-        | jq -c 'select(.Objects != null and (.Objects | length) > 0)' \
-        | while IFS= read -r batch; do
-            aws s3api delete-objects \
-              --bucket "$bucket" \
-              --delete "$batch" \
-              --region "$REGION" >/dev/null
-          done || true
-      # Remove delete markers
-      aws s3api list-object-versions \
-        --bucket "$bucket" --region "$REGION" \
-        --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
-        --output json 2>/dev/null \
-        | jq -c 'select(.Objects != null and (.Objects | length) > 0)' \
-        | while IFS= read -r batch; do
-            aws s3api delete-objects \
-              --bucket "$bucket" \
-              --delete "$batch" \
-              --region "$REGION" >/dev/null
-          done || true
-      aws s3 rb "s3://${bucket}" --force --region "$REGION" >/dev/null || true
-    fi
+    _empty_and_delete_bucket "$bucket"
   done
 
-  # -- CloudWatch log groups -------------------------------------------------
-  local log_groups
-  log_groups=$(aws logs describe-log-groups \
-    --region "$REGION" \
-    --log-group-name-prefix "/mailforge/${ENVIRONMENT}/" \
-    --query 'logGroups[].logGroupName' \
-    --output text 2>/dev/null || true)
-  for lg in $log_groups; do
-    if ! is_cfn_managed "AWS::Logs::LogGroup" "$lg"; then
-      log "  Deleting orphaned CloudWatch log group: ${lg}"
-      aws logs delete-log-group --log-group-name "$lg" --region "$REGION" >/dev/null || true
-    fi
+  # ── SQS queues ─────────────────────────────────────────────────────────────
+  local queues
+  queues=$(aws sqs list-queues --region "$REGION" \
+    --queue-name-prefix "$PREFIX" \
+    --query 'QueueUrls[]' --output text 2>/dev/null || true)
+  for queue_url in $queues; do
+    log "  Deleting SQS queue: ${queue_url}"
+    aws sqs delete-queue --queue-url "$queue_url" --region "$REGION" \
+      >/dev/null 2>&1 || true
   done
+
+  # ── SNS topics ─────────────────────────────────────────────────────────────
+  local topics
+  topics=$(aws sns list-topics --region "$REGION" \
+    --query "Topics[].TopicArn" --output text 2>/dev/null \
+    | tr '\t' '\n' | grep ":${PREFIX}" || true)
+  for topic_arn in $topics; do
+    log "  Deleting SNS topic: ${topic_arn}"
+    aws sns delete-topic --topic-arn "$topic_arn" --region "$REGION" \
+      >/dev/null 2>&1 || true
+  done
+
+  # ── CloudWatch log groups ──────────────────────────────────────────────────
+  local log_groups
+  log_groups=$(aws logs describe-log-groups --region "$REGION" \
+    --log-group-name-prefix "/mailforge/${ENVIRONMENT}/" \
+    --query 'logGroups[].logGroupName' --output text 2>/dev/null || true)
+  for lg in $log_groups; do
+    log "  Deleting CloudWatch log group: ${lg}"
+    aws logs delete-log-group --log-group-name "$lg" --region "$REGION" \
+      >/dev/null 2>&1 || true
+  done
+
+  # ── SQS deletion propagation delay ─────────────────────────────────────────
+  # AWS requires 60 s before a deleted queue name can be reused.
+  if [[ -n "${queues:-}" ]]; then
+    log "  Waiting 65s for SQS queue names to become available again..."
+    sleep 65
+  fi
 
   log "Orphan cleanup complete"
   return 0
@@ -309,8 +352,14 @@ detect_lambda_concurrency_context
 bootstrap_cdk
 
 log "Deploying ${STACK_NAME}"
+# --no-rollback keeps partially-created resources in place on failure so they
+# can be imported on a retry, instead of rolling back and re-polluting the
+# account with another wave of RETAIN orphans.
 # shellcheck disable=SC2086
-(cd infrastructure && npm run "deploy:${ENVIRONMENT}" -- --require-approval never $CONCURRENCY_FLAGS)
+(cd infrastructure && npm run "deploy:${ENVIRONMENT}" -- \
+  --require-approval never \
+  --no-rollback \
+  $CONCURRENCY_FLAGS)
 
 log "Reading CloudFormation outputs"
 OUTPUTS="$(
