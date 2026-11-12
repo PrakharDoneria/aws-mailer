@@ -4,7 +4,9 @@ set -Eeuo pipefail
 
 ENVIRONMENT="${1:-dev}"
 REPO_URL="https://github.com/prakhardoneria/aws-mailer.git"
-REPO_DIR="aws-mailer"
+DEPLOY_ROOT="${TMPDIR:-/tmp}/mailforge-deploy-${ENVIRONMENT}-$$"
+REPO_DIR="${DEPLOY_ROOT}/aws-mailer"
+NPM_CACHE_DIR="${TMPDIR:-/tmp}/mailforge-npm-cache-${ENVIRONMENT}-$$"
 
 if [[ ! "$ENVIRONMENT" =~ ^(dev|prod)$ ]]; then
   echo "Usage: $0 [dev|prod]" >&2
@@ -14,6 +16,12 @@ fi
 log() {
   printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1"
 }
+
+cleanup_local_workspace() {
+  rm -rf "$DEPLOY_ROOT" "$NPM_CACHE_DIR"
+}
+
+trap cleanup_local_workspace EXIT
 
 fail() {
   echo "ERROR: $1" >&2
@@ -43,20 +51,20 @@ aws sts get-caller-identity >/dev/null || fail "AWS credentials are not configur
 if [[ -f package.json && -d infrastructure ]]; then
   PROJECT_DIR="$PWD"
 else
-  if [[ ! -d "$REPO_DIR" ]]; then
-    log "Cloning $REPO_URL"
-    git clone "$REPO_URL" "$REPO_DIR"
-  fi
-  PROJECT_DIR="$(cd "$REPO_DIR" && pwd)"
+  mkdir -p "$DEPLOY_ROOT"
+  log "Cloning $REPO_URL into temporary CloudShell storage"
+  git clone --depth 1 "$REPO_URL" "$REPO_DIR"
+  PROJECT_DIR="$REPO_DIR"
 fi
 
 cd "$PROJECT_DIR"
-require_disk_space "$PROJECT_DIR"
+export npm_config_cache="$NPM_CACHE_DIR"
+require_disk_space "${TMPDIR:-/tmp}"
 
 log "Removing incomplete local install state"
 rm -rf node_modules apps/web/.next apps/web/out
 npm cache clean --force >/dev/null 2>&1 || true
-require_disk_space "$PROJECT_DIR"
+require_disk_space "${TMPDIR:-/tmp}"
 
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 REGION="$(aws configure get region 2>/dev/null || true)"
@@ -70,7 +78,7 @@ else
   npm install --ignore-scripts --no-audit --no-fund
 fi
 npm cache clean --force >/dev/null 2>&1 || true
-require_disk_space "$PROJECT_DIR"
+require_disk_space "${TMPDIR:-/tmp}"
 
 build_typescript() {
   local config="$1"
