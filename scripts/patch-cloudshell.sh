@@ -82,6 +82,39 @@ build apps/lambda/outbound-sender/tsconfig.json
 build apps/lambda/ses-event-processor/tsconfig.json
 build apps/lambda/webhook-dispatcher/tsconfig.json
 
+bootstrap_cdk() {
+  local bootstrap_status
+  bootstrap_status="$(aws cloudformation describe-stacks \
+    --stack-name CDKToolkit \
+    --region "$REGION" \
+    --query 'Stacks[0].StackStatus' \
+    --output text 2>/dev/null || true)"
+
+  if [[ "$bootstrap_status" == "UPDATE_ROLLBACK_FAILED" ]]; then
+    log "Recovering the failed CDKToolkit rollback in ${REGION}"
+    aws cloudformation continue-update-rollback \
+      --stack-name CDKToolkit \
+      --region "$REGION"
+    aws cloudformation wait stack-update-rollback-complete \
+      --stack-name CDKToolkit \
+      --region "$REGION"
+  elif [[ "$bootstrap_status" == *_IN_PROGRESS ]]; then
+    fail "CDKToolkit is currently ${bootstrap_status}; wait for it to finish before patching"
+  fi
+
+  log "Ensuring CDK is bootstrapped in ${REGION}"
+  if ! (cd infrastructure && npm run bootstrap -- --region "$REGION" --force); then
+    bootstrap_status="$(aws cloudformation describe-stacks \
+      --stack-name CDKToolkit \
+      --region "$REGION" \
+      --query 'Stacks[0].StackStatus' \
+      --output text 2>/dev/null || true)"
+    fail "CDK bootstrap failed in ${REGION} with CDKToolkit status ${bootstrap_status:-not found}; no application resources were changed"
+  fi
+}
+
+bootstrap_cdk
+
 log "Updating ${STACK_NAME} in place (no delete or destroy operation)"
 (cd infrastructure && npm run "deploy:${ENVIRONMENT}" -- --require-approval never)
 

@@ -186,6 +186,19 @@ export CDK_DEFAULT_REGION=ap-south-1
 bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
 ```
 
+### CDKToolkit bootstrap role error
+
+If bootstrap reports that
+`cdk-hnb659fds-cfn-exec-role-...` cannot be found, the regional CDK bootstrap
+stack is incomplete. The deployment scripts now inspect `CDKToolkit`, recover
+an `UPDATE_ROLLBACK_FAILED` state with CloudFormation, and retry CDK bootstrap
+with `--force`. Rerun the cache-busting deployment command after the recovery
+retry:
+
+```bash
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
+```
+
 ### Common Issues
 
 **"AWS credentials not configured"**

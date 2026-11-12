@@ -113,8 +113,41 @@ build_typescript "apps/lambda/outbound-sender/tsconfig.json" "apps/lambda/outbou
 build_typescript "apps/lambda/ses-event-processor/tsconfig.json" "apps/lambda/ses-event-processor/dist/index.js"
 build_typescript "apps/lambda/webhook-dispatcher/tsconfig.json" "apps/lambda/webhook-dispatcher/dist/index.js"
 
-log "Bootstrapping CDK in ${REGION}"
-(cd infrastructure && npm run bootstrap -- --region "$REGION")
+bootstrap_cdk() {
+  local bootstrap_status
+  bootstrap_status="$(aws cloudformation describe-stacks \
+    --stack-name CDKToolkit \
+    --region "$REGION" \
+    --query 'Stacks[0].StackStatus' \
+    --output text 2>/dev/null || true)"
+
+  if [[ "$bootstrap_status" == "UPDATE_ROLLBACK_FAILED" ]]; then
+    log "Recovering the failed CDKToolkit rollback in ${REGION}"
+    aws cloudformation continue-update-rollback \
+      --stack-name CDKToolkit \
+      --region "$REGION"
+    aws cloudformation wait stack-update-rollback-complete \
+      --stack-name CDKToolkit \
+      --region "$REGION"
+  elif [[ "$bootstrap_status" == *_IN_PROGRESS ]]; then
+    fail "CDKToolkit is currently ${bootstrap_status}; wait for it to finish before deploying"
+  fi
+
+  log "Bootstrapping CDK in ${REGION}"
+  if ! (cd infrastructure && npm run bootstrap -- --region "$REGION" --force); then
+    bootstrap_status="$(aws cloudformation describe-stacks \
+      --stack-name CDKToolkit \
+      --region "$REGION" \
+      --query 'Stacks[0].StackStatus' \
+      --output text 2>/dev/null || true)"
+    if [[ "$bootstrap_status" == "UPDATE_ROLLBACK_FAILED" ]]; then
+      fail "CDKToolkit is still UPDATE_ROLLBACK_FAILED. Run 'aws cloudformation continue-update-rollback --stack-name CDKToolkit --region ${REGION}', then rerun this command."
+    fi
+    fail "CDK bootstrap failed in ${REGION} with CDKToolkit status ${bootstrap_status:-not found}"
+  fi
+}
+
+bootstrap_cdk
 
 log "Deploying ${STACK_NAME}"
 (cd infrastructure && npm run "deploy:${ENVIRONMENT}" -- --require-approval never)
