@@ -20,6 +20,19 @@ fail() {
   exit 1
 }
 
+free_kb() {
+  df -Pk "$1" | awk 'NR == 2 { print $4 }'
+}
+
+require_disk_space() {
+  local available_kb
+  available_kb="$(free_kb "$1")"
+  [[ "$available_kb" =~ ^[0-9]+$ ]] || fail "Could not determine available CloudShell disk space"
+  if (( available_kb < 250000 )); then
+    fail "Less than 250 MB is available in CloudShell. Delete old files or start a fresh CloudShell session, then retry."
+  fi
+}
+
 command -v aws >/dev/null || fail "AWS CLI is required"
 command -v node >/dev/null || fail "Node.js 18+ is required"
 command -v npm >/dev/null || fail "npm is required"
@@ -38,6 +51,13 @@ else
 fi
 
 cd "$PROJECT_DIR"
+require_disk_space "$PROJECT_DIR"
+
+log "Removing incomplete local install state"
+rm -rf node_modules apps/web/.next apps/web/out
+npm cache clean --force >/dev/null 2>&1 || true
+require_disk_space "$PROJECT_DIR"
+
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 REGION="$(aws configure get region 2>/dev/null || true)"
 REGION="${REGION:-us-east-1}"
@@ -45,10 +65,12 @@ STACK_NAME="mailforge-${ENVIRONMENT}"
 
 log "Installing dependencies"
 if [[ -f package-lock.json ]]; then
-  npm ci
+  npm ci --ignore-scripts --no-audit --no-fund
 else
-  npm install
+  npm install --ignore-scripts --no-audit --no-fund
 fi
+npm cache clean --force >/dev/null 2>&1 || true
+require_disk_space "$PROJECT_DIR"
 
 build_typescript() {
   local config="$1"

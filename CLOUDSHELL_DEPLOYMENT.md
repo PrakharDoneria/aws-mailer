@@ -156,6 +156,19 @@ aws s3 ls --query 'Buckets[?contains(Name, `mailforge`)]'
 
 ## Troubleshooting
 
+### CloudShell says "ENOSPC" or "no space left on device"
+
+CloudShell has limited persistent storage. The deployment script cleans its
+incomplete `node_modules` install and npm cache before retrying, and installs
+without optional packages. If the first attempt filled the home directory,
+remove the incomplete checkout and retry:
+
+```bash
+rm -rf ~/aws-mailer
+npm cache clean --force
+bash <(curl -s https://raw.githubusercontent.com/prakhardoneria/aws-mailer/main/scripts/deploy-cloudshell.sh) prod
+```
+
 ### Common Issues
 
 **"AWS credentials not configured"**
