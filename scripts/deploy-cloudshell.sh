@@ -7,6 +7,7 @@ REPO_URL="https://github.com/prakhardoneria/aws-mailer.git"
 DEPLOY_ROOT="${TMPDIR:-/tmp}/mailforge-deploy-${ENVIRONMENT}-$$"
 REPO_DIR="${DEPLOY_ROOT}/aws-mailer"
 NPM_CACHE_DIR="${TMPDIR:-/tmp}/mailforge-npm-cache-${ENVIRONMENT}-$$"
+SCRIPT_VERSION="2026-11-12-cloudshell-storage-v2"
 
 if [[ ! "$ENVIRONMENT" =~ ^(dev|prod)$ ]]; then
   echo "Usage: $0 [dev|prod]" >&2
@@ -22,6 +23,7 @@ cleanup_local_workspace() {
 }
 
 trap cleanup_local_workspace EXIT
+log "MailForge CloudShell deploy ${SCRIPT_VERSION}"
 
 fail() {
   echo "ERROR: $1" >&2
@@ -51,6 +53,10 @@ aws sts get-caller-identity >/dev/null || fail "AWS credentials are not configur
 if [[ -f package.json && -d infrastructure ]]; then
   PROJECT_DIR="$PWD"
 else
+  # Remove only stale workspaces created by this deployment script.
+  find "${TMPDIR:-/tmp}" -maxdepth 1 -type d \
+    \( -name 'mailforge-deploy-*' -o -name 'mailforge-npm-cache-*' \) \
+    -exec rm -rf {} +
   mkdir -p "$DEPLOY_ROOT"
   log "Cloning $REPO_URL into temporary CloudShell storage"
   git clone --depth 1 "$REPO_URL" "$REPO_DIR"
@@ -73,9 +79,11 @@ STACK_NAME="mailforge-${ENVIRONMENT}"
 
 log "Installing dependencies"
 if [[ -f package-lock.json ]]; then
-  npm ci --ignore-scripts --no-audit --no-fund
+  npm ci --ignore-scripts --no-audit --no-fund \
+    --omit=optional --install-strategy=shallow
 else
-  npm install --ignore-scripts --no-audit --no-fund
+  npm install --ignore-scripts --no-audit --no-fund \
+    --omit=optional --install-strategy=shallow
 fi
 npm cache clean --force >/dev/null 2>&1 || true
 require_disk_space "${TMPDIR:-/tmp}"
