@@ -20,6 +20,18 @@ export interface EmailProcessingStackProps {
   storageStack: StorageStack;
   queueStack: QueueStack;
   emailStack: EmailStack;
+  /**
+   * Reserved concurrency overrides for accounts with sufficient Lambda quota.
+   * Leave undefined (the default) on accounts with low concurrency limits.
+   * AWS requires that total reserved concurrency leaves at least 10 unreserved.
+   * Request a quota increase at: https://console.aws.amazon.com/servicequotas/
+   * before setting these values.
+   */
+  reservedConcurrency?: {
+    inboundProcessor?: number;  // default: undefined (no reservation); suggested: 100
+    outboundSender?: number;    // default: undefined (no reservation); suggested: 50
+    webhookDispatcher?: number; // default: undefined (no reservation); suggested: 50
+  };
 }
 
 export class EmailProcessingStack extends Construct {
@@ -98,7 +110,7 @@ export class EmailProcessingStack extends Construct {
         timeout: cdk.Duration.seconds(60),
         memorySize: 1024,
         role: lambdaRole,
-        reservedConcurrentExecutions: 100,
+        reservedConcurrentExecutions: props.reservedConcurrency?.inboundProcessor,
         environment: {
           ENVIRONMENT: props.environment,
           ORGANIZATIONS_TABLE: props.dynamoDb.organizationsTable.tableName,
@@ -141,7 +153,7 @@ export class EmailProcessingStack extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
         role: lambdaRole,
-        reservedConcurrentExecutions: 50,
+        reservedConcurrentExecutions: props.reservedConcurrency?.outboundSender,
         environment: {
           ENVIRONMENT: props.environment,
           ORGANIZATIONS_TABLE: props.dynamoDb.organizationsTable.tableName,
@@ -213,7 +225,7 @@ export class EmailProcessingStack extends Construct {
         timeout: cdk.Duration.seconds(60),
         memorySize: 256,
         role: lambdaRole,
-        reservedConcurrentExecutions: 50,
+        reservedConcurrentExecutions: props.reservedConcurrency?.webhookDispatcher,
         environment: {
           ENVIRONMENT: props.environment,
           WEBHOOKS_TABLE: props.dynamoDb.webhooksTable.tableName,
