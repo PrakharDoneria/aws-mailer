@@ -191,9 +191,10 @@ bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/m
 If bootstrap reports that
 `cdk-hnb659fds-cfn-exec-role-...` cannot be found, the regional CDK bootstrap
 stack is incomplete. The deployment scripts now inspect `CDKToolkit`, recover
-an `UPDATE_ROLLBACK_FAILED` state with CloudFormation, and retry CDK bootstrap
-with `--force`. Rerun the cache-busting deployment command after the recovery
-retry:
+an `UPDATE_ROLLBACK_FAILED` state with CloudFormation. If the stack is
+`UPDATE_ROLLBACK_COMPLETE` but its execution role is missing, they delete only
+the broken `CDKToolkit` stack and recreate it; application stacks and resources
+are not deleted. They then retry CDK bootstrap with `--force`:
 
 ```bash
 bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod

@@ -115,6 +115,7 @@ build_typescript "apps/lambda/webhook-dispatcher/tsconfig.json" "apps/lambda/web
 
 bootstrap_cdk() {
   local bootstrap_status
+  local execution_role
   bootstrap_status="$(aws cloudformation describe-stacks \
     --stack-name CDKToolkit \
     --region "$REGION" \
@@ -131,6 +132,16 @@ bootstrap_cdk() {
       --region "$REGION"
   elif [[ "$bootstrap_status" == *_IN_PROGRESS ]]; then
     fail "CDKToolkit is currently ${bootstrap_status}; wait for it to finish before deploying"
+  fi
+
+  execution_role="cdk-hnb659fds-cfn-exec-role-${ACCOUNT}-${REGION}"
+  if [[ "$bootstrap_status" == "UPDATE_ROLLBACK_COMPLETE" ]] &&
+    ! aws iam get-role --role-name "$execution_role" --region "$REGION" >/dev/null 2>&1; then
+    log "Repairing CDKToolkit drift: missing ${execution_role}"
+    aws cloudformation delete-stack --stack-name CDKToolkit --region "$REGION"
+    aws cloudformation wait stack-delete-complete \
+      --stack-name CDKToolkit --region "$REGION"
+    bootstrap_status=""
   fi
 
   log "Bootstrapping CDK in ${REGION}"
