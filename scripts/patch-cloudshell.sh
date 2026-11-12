@@ -24,10 +24,16 @@ for command_name in aws git node npm jq curl; do
 done
 aws sts get-caller-identity >/dev/null || fail "AWS credentials are not configured"
 
-REGION="$(aws configure get region 2>/dev/null || true)"
+REGION="${CDK_DEFAULT_REGION:-${AWS_REGION:-}}"
+if [[ -z "$REGION" ]]; then
+  REGION="$(aws configure get region 2>/dev/null || true)"
+fi
 REGION="${REGION:-us-east-1}"
+export CDK_DEFAULT_REGION="$REGION"
+export AWS_DEFAULT_REGION="$REGION"
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 
+log "Using AWS region ${REGION}"
 log "Inspecting existing ${STACK_NAME} resources before patching"
 STACK_STATUS="$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
   --region "$REGION" --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)"

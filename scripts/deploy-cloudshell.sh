@@ -73,9 +73,17 @@ npm cache clean --force >/dev/null 2>&1 || true
 require_disk_space "${TMPDIR:-/tmp}"
 
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
-REGION="$(aws configure get region 2>/dev/null || true)"
+# CDK uses CDK_DEFAULT_REGION when synthesizing the stack. Prefer it so all
+# AWS CLI calls inspect and publish to the same region as the deployment.
+REGION="${CDK_DEFAULT_REGION:-${AWS_REGION:-}}"
+if [[ -z "$REGION" ]]; then
+  REGION="$(aws configure get region 2>/dev/null || true)"
+fi
 REGION="${REGION:-us-east-1}"
+export CDK_DEFAULT_REGION="$REGION"
+export AWS_DEFAULT_REGION="$REGION"
 STACK_NAME="mailforge-${ENVIRONMENT}"
+log "Using AWS region ${REGION}"
 
 log "Installing dependencies"
 if [[ -f package-lock.json ]]; then

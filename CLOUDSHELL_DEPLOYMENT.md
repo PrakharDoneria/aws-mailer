@@ -174,6 +174,18 @@ npm cache clean --force
 bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/deploy-cloudshell.sh?v=2026-11-12") prod
 ```
 
+### Stack is missing or resources are in another region
+
+The deploy and patch scripts use `CDK_DEFAULT_REGION` first, then
+`AWS_REGION`, then the AWS CLI profile region. This keeps CloudFormation,
+CloudFront, S3, and CDK pointed at the same region. To target an existing
+deployment explicitly, set the region before running the patch:
+
+```bash
+export CDK_DEFAULT_REGION=ap-south-1
+bash <(curl -fsSL "https://raw.githubusercontent.com/PrakharDoneria/aws-mailer/main/scripts/patch-cloudshell.sh?v=2026-11-12") prod
+```
+
 ### Common Issues
 
 **"AWS credentials not configured"**
