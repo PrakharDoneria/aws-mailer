@@ -7,7 +7,7 @@ REPO_URL="https://github.com/prakhardoneria/aws-mailer.git"
 DEPLOY_ROOT="${TMPDIR:-/tmp}/mailforge-deploy-${ENVIRONMENT}-$$"
 REPO_DIR="${DEPLOY_ROOT}/aws-mailer"
 NPM_CACHE_DIR="${TMPDIR:-/tmp}/mailforge-npm-cache-${ENVIRONMENT}-$$"
-SCRIPT_VERSION="2026-11-12-cloudshell-storage-v2"
+SCRIPT_VERSION="2026-11-13-set-e-safe-concurrency"
 
 if [[ ! "$ENVIRONMENT" =~ ^(dev|prod)$ ]]; then
   echo "Usage: $0 [dev|prod]" >&2
@@ -167,13 +167,19 @@ bootstrap_cdk() {
 # log groups are deleted directly.
 # ---------------------------------------------------------------------------
 is_cfn_managed() {
-  local resource_type="$1"
+  # Returns 0 (true) if the resource is tracked by any CFN stack, 1 otherwise.
+  # Written to be safe under set -e: always exits 0 or 1, never traps.
   local resource_id="$2"
-  aws cloudformation describe-stack-resources \
+  local stack_name
+  stack_name=$(aws cloudformation describe-stack-resources \
     --region "$REGION" \
     --physical-resource-id "$resource_id" \
     --query 'StackResources[0].StackName' \
-    --output text 2>/dev/null | grep -qv '^None$'
+    --output text 2>/dev/null || true)
+  if [[ -n "$stack_name" && "$stack_name" != "None" ]]; then
+    return 0   # managed
+  fi
+  return 1     # orphaned
 }
 
 purge_orphaned_resources() {
@@ -244,45 +250,57 @@ purge_orphaned_resources() {
   done
 
   log "Orphan cleanup complete"
+  return 0
 }
 
 # ---------------------------------------------------------------------------
 # detect_lambda_concurrency_context
 # Reads the account's unreserved Lambda concurrency and emits CDK context
 # flags so the stack sets safe reserved-concurrency values.
+# Sets global CONCURRENCY_FLAGS and LAMBDA_ACCOUNT_LIMIT.
+# NOTE: written to never return non-zero (safe under set -e).
 # ---------------------------------------------------------------------------
 detect_lambda_concurrency_context() {
-  local account_limit
+  local account_limit usable inbound outbound webhook
   account_limit=$(aws lambda get-account-settings \
     --region "$REGION" \
     --query 'AccountLimit.ConcurrentExecutions' \
-    --output text 2>/dev/null || echo "0")
+    --output text 2>/dev/null || true)
+  # Default to 10 if the call failed or returned nothing
+  account_limit="${account_limit:-10}"
+  LAMBDA_ACCOUNT_LIMIT="$account_limit"
 
   # Keep at least 10 unreserved (AWS minimum).
-  local usable=$(( account_limit - 10 ))
-  (( usable < 0 )) && usable=0
+  if (( account_limit > 10 )); then
+    usable=$(( account_limit - 10 ))
+  else
+    usable=0
+  fi
 
-  # Distribute across the three reserved-concurrency Lambdas:
-  #   inbound 50 %, outbound 30 %, webhook 20 % — but cap at the defaults.
-  local inbound outbound webhook
-  inbound=$(( usable * 50 / 100 ))
-  outbound=$(( usable * 30 / 100 ))
-  webhook=$(( usable * 20 / 100 ))
-
-  # If the account is so small that any reservation would breach the minimum,
-  # pass 0 so CDK omits the property entirely (uses unreserved pool).
-  [[ $inbound -lt 1 ]] && inbound=0
-  [[ $outbound -lt 1 ]] && outbound=0
-  [[ $webhook -lt 1 ]] && webhook=0
+  # Distribute across the three reserved-concurrency Lambdas (50/30/20 %).
+  if (( usable > 0 )); then
+    inbound=$(( usable * 50 / 100 ))
+    outbound=$(( usable * 30 / 100 ))
+    webhook=$(( usable * 20 / 100 ))
+  else
+    inbound=0; outbound=0; webhook=0
+  fi
 
   log "Lambda concurrency: account limit=${account_limit}, usable=${usable}"
   log "  inboundProcessor=${inbound}, outboundSender=${outbound}, webhookDispatcher=${webhook}"
 
-  # Return as CDK --context flags (empty string if no reservation)
+  if (( account_limit <= 10 )); then
+    log "  WARNING: account concurrency limit is at the AWS minimum (${account_limit})."
+    log "  Lambdas will deploy without reserved concurrency and share the ${account_limit}-execution pool."
+    log "  Request an increase after deploy: https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384"
+  fi
+
+  # Build CDK --context flags (omit any that are 0 so CDK skips the property)
   CONCURRENCY_FLAGS=""
-  [[ $inbound -gt 0 ]] && CONCURRENCY_FLAGS+=" -c lambdaConcurrencyInbound=${inbound}"
-  [[ $outbound -gt 0 ]] && CONCURRENCY_FLAGS+=" -c lambdaConcurrencyOutbound=${outbound}"
-  [[ $webhook -gt 0 ]]  && CONCURRENCY_FLAGS+=" -c lambdaConcurrencyWebhook=${webhook}"
+  if (( inbound  > 0 )); then CONCURRENCY_FLAGS+=" -c lambdaConcurrencyInbound=${inbound}";   fi
+  if (( outbound > 0 )); then CONCURRENCY_FLAGS+=" -c lambdaConcurrencyOutbound=${outbound}"; fi
+  if (( webhook  > 0 )); then CONCURRENCY_FLAGS+=" -c lambdaConcurrencyWebhook=${webhook}";   fi
+  return 0
 }
 
 purge_orphaned_resources
@@ -346,6 +364,25 @@ for attempt in {1..12}; do
 done
 
 log "Deployment complete"
+
+# Show a critical warning if the account concurrency limit is dangerously low
+if (( LAMBDA_ACCOUNT_LIMIT <= 10 )); then
+  cat <<WARN
+
+╔══════════════════════════════════════════════════════════╗
+  🚨 CRITICAL: Lambda concurrency limit is ${LAMBDA_ACCOUNT_LIMIT}
+╚══════════════════════════════════════════════════════════╝
+  Your account has only ${LAMBDA_ACCOUNT_LIMIT} total concurrent Lambda executions
+  in ${REGION}. All Lambdas in your account share this pool.
+  The app is deployed and will work, but under ANY load it
+  will throttle heavily.
+
+  REQUEST A QUOTA INCREASE NOW (takes ~24 hours):
+  https://console.aws.amazon.com/servicequotas/home/services/lambda/quotas/L-B99A9384
+  Request value: 1000 (AWS default for established accounts)
+WARN
+fi
+
 cat <<EOF
 
 ╔══════════════════════════════════════════════════════════╗
