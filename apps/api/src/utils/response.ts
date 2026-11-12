@@ -1,6 +1,13 @@
 import { APIGatewayProxyResult } from "aws-lambda";
 import { APIResponse, MailForgeError, ErrorCodes } from "@mailforge/shared";
 
+const CORS_HEADERS = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key",
+  "Access-Control-Allow-Methods": "*",
+};
+
 export function successResponse<T>(
   data: T,
   statusCode: number = 200
@@ -13,9 +20,7 @@ export function successResponse<T>(
   return {
     statusCode,
     body: JSON.stringify(response),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: CORS_HEADERS,
   };
 }
 
@@ -53,9 +58,7 @@ export function errorResponse(
   return {
     statusCode: finalStatusCode,
     body: JSON.stringify(response),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: CORS_HEADERS,
   };
 }
 
@@ -80,8 +83,6 @@ export function paginatedResponse<T>(
   return {
     statusCode,
     body: JSON.stringify(response),
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: CORS_HEADERS,
   };
 }

@@ -37,7 +37,7 @@ export default function Home() {
             href="/auth/sign-up"
             className="inline-block px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
           >
-            Start Free Trial
+            Get Started For Free
           </Link>
         </div>
 
@@ -56,13 +56,13 @@ export default function Home() {
             },
             {
               icon: Lock,
-              title: 'Secure',
-              description: 'Encrypted storage and transmission',
+              title: 'Secure & Private',
+              description: 'Encrypted storage and direct AWS transmission',
             },
             {
               icon: Mail,
-              title: 'Full Control',
-              description: 'REST API and webmail dashboard',
+              title: '100% Free & Open',
+              description: 'Run completely on your own AWS free tier resources',
             },
           ].map((feature, i) => (
             <div key={i} className="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
@@ -76,69 +76,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-center text-gray-900 mb-12">
-            Simple Pricing
+      {/* Free & Open Source Banner */}
+      <section className="bg-white py-16 border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <span className="inline-block px-4 py-1.5 bg-green-100 text-green-800 text-sm font-semibold rounded-full mb-4">
+            100% Free & Open Source
+          </span>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Zero Subscriptions. No Hidden Costs.
           </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                name: 'Free',
-                price: '$0',
-                domains: '1 domain',
-                mailboxes: '3 mailboxes',
-                emails: '100 emails/day',
-              },
-              {
-                name: 'Pro',
-                price: '$29',
-                domains: '5 domains',
-                mailboxes: '25 mailboxes',
-                emails: '10,000 emails/day',
-                featured: true,
-              },
-              {
-                name: 'Business',
-                price: '$99',
-                domains: '20 domains',
-                mailboxes: '200 mailboxes',
-                emails: '100,000 emails/day',
-              },
-            ].map((plan, i) => (
-              <div
-                key={i}
-                className={`p-8 rounded-lg border-2 ${
-                  plan.featured
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-gray-200 bg-white'
-                }`}
-              >
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  {plan.name}
-                </h3>
-                <p className="text-4xl font-bold text-primary-600 mb-6">
-                  {plan.price}
-                  <span className="text-lg text-gray-600">/month</span>
-                </p>
-                <ul className="space-y-4 mb-8">
-                  <li className="text-gray-700">✓ {plan.domains}</li>
-                  <li className="text-gray-700">✓ {plan.mailboxes}</li>
-                  <li className="text-gray-700">✓ {plan.emails}</li>
-                </ul>
-                <button
-                  className={`w-full py-2 rounded-lg font-medium transition-colors ${
-                    plan.featured
-                      ? 'bg-primary-600 text-white hover:bg-primary-700'
-                      : 'border-2 border-gray-200 text-gray-900 hover:border-gray-300'
-                  }`}
-                >
-                  Get Started
-                </button>
-              </div>
-            ))}
-          </div>
+          <p className="text-gray-600 text-lg mb-8">
+            MailForge is self-hosted on your own AWS account. Pay nothing to us — you only utilize standard AWS free-tier services.
+          </p>
+          <Link
+            href="/auth/sign-up"
+            className="inline-block px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+          >
+            Create Your Account
+          </Link>
         </div>
       </section>
     </div>
