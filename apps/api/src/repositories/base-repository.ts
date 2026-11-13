@@ -37,6 +37,23 @@ export class BaseRepository<T> {
     return response.Item ? (response.Item as T) : null;
   }
 
+  /**
+   * Normalizes expression attribute values so every key starts with a colon ':'
+   * (e.g. converts { email: "a@b.com" } to { ":email": "a@b.com" }).
+   * DynamoDB requires all ExpressionAttributeValues keys to begin with ':'.
+   */
+  protected normalizeExpressionValues(
+    values?: Record<string, any>
+  ): Record<string, any> | undefined {
+    if (!values) return undefined;
+    const normalized: Record<string, any> = {};
+    for (const [key, val] of Object.entries(values)) {
+      const formattedKey = key.startsWith(":") ? key : `:${key}`;
+      normalized[formattedKey] = val;
+    }
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }
+
   protected async updateItem(
     key: Record<string, any>,
     updateExpression: string,
@@ -48,7 +65,9 @@ export class BaseRepository<T> {
       Key: key,
       UpdateExpression: updateExpression,
       ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeValues: this.normalizeExpressionValues(
+        expressionAttributeValues
+      ),
       ReturnValues: "ALL_NEW",
     });
     const response = await this.client.send(command);
@@ -88,9 +107,9 @@ export class BaseRepository<T> {
     const command = new QueryCommand({
       TableName: this.tableName,
       KeyConditionExpression: keyConditionExpression,
-      ExpressionAttributeValues: expressionAttributeValues
-        ? expressionAttributeValues
-        : undefined,
+      ExpressionAttributeValues: this.normalizeExpressionValues(
+        expressionAttributeValues
+      ),
       ExpressionAttributeNames: expressionAttributeNames,
       IndexName: indexName,
       Limit: limit,
@@ -116,9 +135,9 @@ export class BaseRepository<T> {
     const command = new ScanCommand({
       TableName: this.tableName,
       FilterExpression: filterExpression,
-      ExpressionAttributeValues: expressionAttributeValues
-        ? expressionAttributeValues
-        : undefined,
+      ExpressionAttributeValues: this.normalizeExpressionValues(
+        expressionAttributeValues
+      ),
       ExpressionAttributeNames: expressionAttributeNames,
       Limit: limit,
     });

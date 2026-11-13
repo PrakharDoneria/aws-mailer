@@ -20,7 +20,7 @@ export class MailboxRepository extends BaseRepository<Mailbox> {
   ): Promise<Mailbox[]> {
     const result = await super.query(
       "organizationId = :orgId",
-      { orgId: organizationId },
+      { ":orgId": organizationId },
       undefined,
       "org-mailbox-index"
     );

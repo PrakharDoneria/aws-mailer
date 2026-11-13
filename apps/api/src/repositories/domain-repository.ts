@@ -17,7 +17,7 @@ export class DomainRepository extends BaseRepository<Domain> {
   async getByDomainName(domainName: string): Promise<Domain | null> {
     const result = await super.query(
       "domainName = :domainName",
-      { domainName },
+      { ":domainName": domainName },
       undefined,
       "domain-name-index"
     );
@@ -27,7 +27,7 @@ export class DomainRepository extends BaseRepository<Domain> {
   async getOrganizationDomains(organizationId: string): Promise<Domain[]> {
     const result = await super.query(
       "organizationId = :orgId",
-      { orgId: organizationId },
+      { ":orgId": organizationId },
       undefined,
       "org-domain-index"
     );

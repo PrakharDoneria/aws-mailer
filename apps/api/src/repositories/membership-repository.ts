@@ -20,7 +20,7 @@ export class MembershipRepository extends BaseRepository<OrganizationMembership>
   async getOrganizationMembers(organizationId: string): Promise<OrganizationMembership[]> {
     const result = await super.query(
       "organizationId = :orgId",
-      { orgId: organizationId },
+      { ":orgId": organizationId },
       undefined,
       undefined
     );

@@ -40,7 +40,7 @@ export class OrganizationRepository extends BaseRepository<Organization> {
   async getByOwnerId(ownerId: string): Promise<Organization[]> {
     const result = await super.query(
       "ownerId = :ownerId",
-      { ownerId },
+      { ":ownerId": ownerId },
       undefined,
       "owner-index"
     );

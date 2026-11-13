@@ -20,7 +20,7 @@ export class MessageRepository extends BaseRepository<Message> {
   async getByMessageId(messageId: string): Promise<Message | null> {
     const result = await super.query(
       "messageId = :msgId",
-      { msgId: messageId },
+      { ":msgId": messageId },
       undefined,
       "message-id-index"
     );
@@ -34,7 +34,7 @@ export class MessageRepository extends BaseRepository<Message> {
   ): Promise<{ items: Message[]; lastKey?: Record<string, any> }> {
     const result = await super.query(
       "mailboxId = :mailboxId",
-      { mailboxId },
+      { ":mailboxId": mailboxId },
       undefined,
       undefined,
       limit,
@@ -52,7 +52,7 @@ export class MessageRepository extends BaseRepository<Message> {
   ): Promise<Message[]> {
     const result = await super.query(
       "organizationId = :orgId",
-      { orgId: organizationId },
+      { ":orgId": organizationId },
       undefined,
       "org-message-index",
       limit

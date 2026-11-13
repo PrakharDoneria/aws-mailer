@@ -17,7 +17,7 @@ export class UserRepository extends BaseRepository<User> {
   async getByEmail(email: string): Promise<User | null> {
     const result = await super.query(
       "email = :email",
-      { email },
+      { ":email": email },
       undefined,
       "email-index"
     );

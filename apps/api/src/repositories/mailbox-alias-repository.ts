@@ -21,7 +21,7 @@ export class MailboxAliasRepository extends BaseRepository<MailboxAlias> {
     // This would need a GSI in production
     const result = await super.scan(
       "localPart = :lp AND domainId = :domainId",
-      { lp: localPart, domainId }
+      { ":lp": localPart, ":domainId": domainId }
     );
     return result.items.length > 0 ? result.items[0] : null;
   }
@@ -30,7 +30,7 @@ export class MailboxAliasRepository extends BaseRepository<MailboxAlias> {
     // This would need a GSI in production
     const result = await super.scan(
       "mailboxId = :mailboxId",
-      { mailboxId }
+      { ":mailboxId": mailboxId }
     );
     return result.items;
   }

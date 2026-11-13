@@ -17,7 +17,7 @@ export class APIKeyRepository extends BaseRepository<APIKey> {
   async getByKeyHash(keyHash: string): Promise<APIKey | null> {
     const result = await super.query(
       "keyHash = :keyHash",
-      { keyHash },
+      { ":keyHash": keyHash },
       undefined,
       "key-hash-index"
     );
@@ -27,7 +27,7 @@ export class APIKeyRepository extends BaseRepository<APIKey> {
   async getOrganizationKeys(organizationId: string): Promise<APIKey[]> {
     const result = await super.query(
       "organizationId = :orgId",
-      { orgId: organizationId },
+      { ":orgId": organizationId },
       undefined,
       "org-key-index"
     );
