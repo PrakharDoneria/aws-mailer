@@ -301,6 +301,10 @@ export class MailboxService {
     );
     if (directMatch) return directMatch;
 
+    // If mailbox not explicitly registered, allow any sender with this organization
+    const anyActive = mailboxes.find((m) => m.status !== "archived");
+    if (anyActive) return anyActive;
+
     // Check aliases (in production, would use GSI)
     const aliases = await this.aliasRepository.getByLocalPartAndDomain(
       localPart,

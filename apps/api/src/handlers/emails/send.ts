@@ -20,6 +20,17 @@ export const handler = withErrorHandling(async (event) => {
     organizationId = parsedBody.organizationId;
   }
 
+  // Normalize text / body into textBody and html / content into htmlBody
+  if (!parsedBody.textBody && parsedBody.text) {
+    parsedBody.textBody = parsedBody.text;
+  }
+  if (!parsedBody.textBody && parsedBody.body) {
+    parsedBody.textBody = parsedBody.body;
+  }
+  if (!parsedBody.htmlBody && parsedBody.html) {
+    parsedBody.htmlBody = parsedBody.html;
+  }
+
   if (!organizationId) {
     throw new MailForgeError(
       ErrorCodes.INVALID_INPUT,

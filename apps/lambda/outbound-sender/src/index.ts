@@ -68,14 +68,23 @@ async function processMessage(record: any): Promise<void> {
     ];
 
     // Send email via SES
+    const fromAddress = (message as any).fromName
+      ? `"${(message as any).fromName}" <${message.from}>`
+      : message.from;
+
+    const emailBodyText =
+      message.textBody || (message as any).text || (message as any).body || "";
+    const emailBodyHtml =
+      message.htmlBody || (message as any).html || (emailBodyText ? `<pre style="font-family: sans-serif;">${emailBodyText}</pre>` : "");
+
     const response = await transporter.sendMail({
-      from: message.from,
+      from: fromAddress,
       to: message.to.join(", "),
       ...(message.cc && message.cc.length > 0 && { cc: message.cc.join(", ") }),
       ...(message.bcc && message.bcc.length > 0 && { bcc: message.bcc.join(", ") }),
       subject: message.subject,
-      ...(message.textBody && { text: message.textBody }),
-      ...(message.htmlBody && { html: message.htmlBody }),
+      ...(emailBodyText && { text: emailBodyText }),
+      ...(emailBodyHtml && { html: emailBodyHtml }),
       // Headers for tracking
       headers: {
         "X-MailForge-MessageId": message.id,

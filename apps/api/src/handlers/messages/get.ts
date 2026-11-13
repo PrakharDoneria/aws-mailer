@@ -17,7 +17,19 @@ export const handler = withErrorHandling(async (event) => {
   }
 
   const messageRepo = new MessageRepository();
-  const message = await messageRepo.getByMessageId(id);
+  let message = await messageRepo.getByMessageId(id);
+
+  if (!message) {
+    // If not found by messageId, try scanning by id attribute
+    const result = await (messageRepo as any).scan(
+      "id = :id",
+      { ":id": id },
+      1
+    );
+    if (result && result.items && result.items.length > 0) {
+      message = result.items[0];
+    }
+  }
 
   if (!message) {
     throw new MailForgeError(

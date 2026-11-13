@@ -7,14 +7,7 @@ import { MailForgeError, ErrorCodes } from "@mailforge/shared";
 export const handler = withErrorHandling(async (event) => {
   extractAuthContext(event);
   const mailboxId = event.queryStringParameters?.mailboxId;
-
-  if (!mailboxId) {
-    throw new MailForgeError(
-      ErrorCodes.INVALID_INPUT,
-      "mailboxId query parameter is required",
-      400
-    );
-  }
+  const organizationId = event.queryStringParameters?.organizationId;
 
   const messageRepo = new MessageRepository();
   const limit = Math.min(
@@ -22,11 +15,20 @@ export const handler = withErrorHandling(async (event) => {
     100
   );
 
-  const { items, lastKey } = await messageRepo.getMailboxMessages(
-    mailboxId,
-    limit
-  );
+  if (mailboxId) {
+    const { items } = await messageRepo.getMailboxMessages(mailboxId, limit);
+    return paginatedResponse(items, items.length, 1, limit, 200);
+  }
 
-  return paginatedResponse(items, items.length, 1, limit, 200);
+  if (organizationId) {
+    const items = await messageRepo.getOrganizationMessages(organizationId, limit);
+    return paginatedResponse(items, items.length, 1, limit, 200);
+  }
+
+  throw new MailForgeError(
+    ErrorCodes.INVALID_INPUT,
+    "mailboxId or organizationId query parameter is required",
+    400
+  );
 });
 

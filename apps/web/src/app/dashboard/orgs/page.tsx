@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Send, Edit2, Trash2, ArrowLeft, Plus, Globe, CheckCircle2 } from 'lucide-react';
+import { Mail, Send, ArrowLeft, Plus, CheckCircle2, RefreshCw, X, User, Calendar, Tag } from 'lucide-react';
 import Link from 'next/link';
 
 interface Mailbox {
@@ -15,9 +15,13 @@ interface Mailbox {
 
 interface Message {
   id: string;
+  mailboxId?: string;
   from: string;
   to: string[];
+  cc?: string[];
   subject: string;
+  textBody?: string;
+  htmlBody?: string;
   preview?: string;
   createdAt: number;
   isRead: boolean;
@@ -27,8 +31,12 @@ export default function OrganizationPage() {
   const [organizationId, setOrganizationId] = useState('');
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedMailboxId, setSelectedMailboxId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'mailboxes' | 'inbox' | 'compose'>('mailboxes');
+
+  // Popup modal for viewing full email
+  const [activeMessage, setActiveMessage] = useState<Message | null>(null);
 
   // New Mailbox modal / state
   const [showNewMailbox, setShowNewMailbox] = useState(false);
@@ -82,7 +90,10 @@ export default function OrganizationPage() {
             ? `${items[0].localPart}@${items[0].domainId}`
             : items[0].localPart;
           setComposeFrom(firstEmail);
+          setSelectedMailboxId(items[0].id);
           fetchMessages(items[0].id);
+        } else {
+          fetchMessages();
         }
       }
     } catch (err) {
@@ -92,11 +103,14 @@ export default function OrganizationPage() {
     }
   };
 
-  const fetchMessages = async (mailboxId: string) => {
+  const fetchMessages = async (mailboxId?: string) => {
     try {
       const token = localStorage.getItem('token');
+      const queryParam = mailboxId
+        ? `mailboxId=${mailboxId}`
+        : `organizationId=${organizationId}`;
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/messages?mailboxId=${mailboxId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/v1/messages?${queryParam}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -106,6 +120,25 @@ export default function OrganizationPage() {
       }
     } catch (err) {
       console.error('Failed to fetch messages', err);
+    }
+  };
+
+  const handleOpenMessage = async (msg: Message) => {
+    setActiveMessage(msg);
+    // Optionally fetch full message details if bodies are truncated
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/messages/${msg.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const fullData = await res.json();
+        if (fullData.data) {
+          setActiveMessage(fullData.data);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load full message details", e);
     }
   };
 
@@ -176,7 +209,8 @@ export default function OrganizationPage() {
           from: composeFrom,
           to: composeTo.split(',').map((e) => e.trim()),
           subject: composeSubject,
-          text: composeBody,
+          textBody: composeBody,
+          htmlBody: composeBody ? `<div style="font-family: sans-serif; white-space: pre-wrap;">${composeBody}</div>` : '',
         }),
       });
 
@@ -185,7 +219,7 @@ export default function OrganizationPage() {
         throw new Error(errJson?.error?.message || errJson?.message || 'Failed to send email');
       }
 
-      setComposeStatus({ type: 'success', message: 'Email queued for delivery successfully!' });
+      setComposeStatus({ type: 'success', message: 'Email queued for delivery successfully via SES!' });
       setComposeSubject('');
       setComposeBody('');
     } catch (err) {
@@ -209,7 +243,7 @@ export default function OrganizationPage() {
           </Link>
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-primary-600" />
-            <span className="font-semibold text-gray-900">Organization Mail</span>
+            <span className="font-semibold text-gray-900">MailForge</span>
           </div>
         </div>
       </header>
@@ -223,6 +257,9 @@ export default function OrganizationPage() {
               onClick={() => {
                 setTab(t);
                 setComposeStatus(null);
+                if (t === 'inbox') {
+                  fetchMessages(selectedMailboxId);
+                }
               }}
               className={`px-4 py-2 font-medium border-b-2 transition-colors ${
                 tab === t
@@ -240,9 +277,9 @@ export default function OrganizationPage() {
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Mailboxes & Domains</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Mailboxes & Addresses</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Add mailboxes for your AWS SES-verified domain to send and receive emails.
+                  Mailboxes mapped to your AWS SES verified domains.
                 </p>
               </div>
               <button
@@ -258,7 +295,7 @@ export default function OrganizationPage() {
               <div className="mb-8 p-6 bg-white rounded-lg shadow-md border-l-4 border-primary-600">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Add New Mailbox / Email Address</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  Enter your address prefix and any domain already verified in your AWS SES account.
+                  Enter your address prefix and any domain verified in your AWS SES.
                 </p>
 
                 {mailboxError && (
@@ -274,7 +311,7 @@ export default function OrganizationPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="support or info"
+                      placeholder="e.g. test or support"
                       value={newLocalPart}
                       onChange={(e) => setNewLocalPart(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
@@ -286,7 +323,7 @@ export default function OrganizationPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="example.com"
+                      placeholder="e.g. testmailer.sblab.xyz"
                       value={newDomain}
                       onChange={(e) => setNewDomain(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
@@ -298,7 +335,7 @@ export default function OrganizationPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Support Team"
+                      placeholder="My Team"
                       value={newDisplayName}
                       onChange={(e) => setNewDisplayName(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
@@ -342,7 +379,7 @@ export default function OrganizationPage() {
                   onClick={() => setShowNewMailbox(true)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4" />
                   Add First Mailbox
                 </button>
               </div>
@@ -390,6 +427,16 @@ export default function OrganizationPage() {
                           <Send className="w-4 h-4" />
                           Compose from this
                         </button>
+                        <button
+                          onClick={() => {
+                            setSelectedMailboxId(mb.id);
+                            setTab('inbox');
+                            fetchMessages(mb.id);
+                          }}
+                          className="px-3 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                        >
+                          View Inbox
+                        </button>
                       </div>
                     </div>
                   );
@@ -402,34 +449,68 @@ export default function OrganizationPage() {
         {/* Inbox Tab */}
         {tab === 'inbox' && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Inbox</h2>
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-900">Inbox</h2>
+                {mailboxes.length > 0 && (
+                  <select
+                    value={selectedMailboxId}
+                    onChange={(e) => {
+                      setSelectedMailboxId(e.target.value);
+                      fetchMessages(e.target.value);
+                    }}
+                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="">All Mailboxes in Org</option>
+                    {mailboxes.map((mb) => (
+                      <option key={mb.id} value={mb.id}>
+                        {mb.displayName} ({mb.localPart}@{mb.domainId})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <button
+                onClick={() => fetchMessages(selectedMailboxId)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+
             {messages.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+              <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-100">
                 <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No messages</h3>
-                <p className="text-gray-600">Your inbox is empty</p>
+                <p className="text-gray-600 text-sm max-w-md mx-auto">
+                  Your inbox is waiting for incoming emails. Ensure your SES Inbound Receipt Rule forwards to S3/SNS.
+                </p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden divide-y divide-gray-100">
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden divide-y divide-gray-100 border border-gray-200">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex gap-4"
+                    onClick={() => handleOpenMessage(msg)}
+                    className="p-4 hover:bg-blue-50/50 transition-colors cursor-pointer flex gap-4 items-center"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className={msg.isRead ? 'text-gray-600 font-medium' : 'font-bold text-gray-900'}>
-                        {msg.from}
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${msg.isRead ? 'text-gray-600' : 'font-bold text-gray-900'}`}>
+                          {msg.from}
+                        </span>
+                      </div>
+                      <p className={`text-sm mt-0.5 ${msg.isRead ? 'text-gray-700' : 'text-gray-900 font-semibold'}`}>
+                        {msg.subject || '(No Subject)'}
                       </p>
-                      <p className={msg.isRead ? 'text-gray-700 text-sm' : 'text-gray-900 text-sm font-semibold'}>
-                        {msg.subject}
+                      <p className="text-gray-500 text-xs mt-1 truncate">
+                        {msg.textBody || msg.preview || 'Click to view email body'}
                       </p>
-                      {msg.preview && (
-                        <p className="text-gray-500 text-sm mt-1 truncate">{msg.preview}</p>
-                      )}
                     </div>
-                    <p className="text-gray-500 text-xs whitespace-nowrap">
-                      {new Date(msg.createdAt * 1000).toLocaleDateString()}
-                    </p>
+                    <span className="text-gray-400 text-xs whitespace-nowrap">
+                      {new Date(msg.createdAt * 1000).toLocaleString()}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -439,7 +520,7 @@ export default function OrganizationPage() {
 
         {/* Compose Tab */}
         {tab === 'compose' && (
-          <div className="max-w-2xl bg-white p-6 rounded-lg shadow-sm space-y-4">
+          <div className="max-w-2xl bg-white p-6 rounded-lg shadow-sm space-y-4 border border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Compose Email</h2>
 
             {composeStatus && (
@@ -472,7 +553,7 @@ export default function OrganizationPage() {
                       );
                     })}
                   </select>
-                  <p className="text-xs text-gray-500">Or type any custom sender address below:</p>
+                  <p className="text-xs text-gray-500">Or type custom sender address below:</p>
                   <input
                     type="text"
                     value={composeFrom}
@@ -543,6 +624,82 @@ export default function OrganizationPage() {
           </div>
         )}
       </main>
+
+      {/* Full Message View Modal Pop-up */}
+      {activeMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
+              <div className="min-w-0 pr-4">
+                <h3 className="text-xl font-bold text-gray-900 break-words">
+                  {activeMessage.subject || '(No Subject)'}
+                </h3>
+                <div className="mt-3 space-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">From:</span>
+                    <span className="text-primary-700 font-medium">{activeMessage.from}</span>
+                  </div>
+                  {activeMessage.to && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-800">To:</span>
+                      <span>{Array.isArray(activeMessage.to) ? activeMessage.to.join(', ') : activeMessage.to}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-gray-400 pt-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{new Date(activeMessage.createdAt * 1000).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveMessage(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 text-gray-800 leading-relaxed">
+              {activeMessage.htmlBody ? (
+                <div
+                  className="prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: activeMessage.htmlBody }}
+                />
+              ) : activeMessage.textBody ? (
+                <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800">
+                  {activeMessage.textBody}
+                </pre>
+              ) : (
+                <p className="text-gray-400 italic">This email has no text or HTML content.</p>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setComposeTo(activeMessage.from);
+                  setComposeSubject(`Re: ${activeMessage.subject || ''}`);
+                  setActiveMessage(null);
+                  setTab('compose');
+                }}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Reply
+              </button>
+              <button
+                onClick={() => setActiveMessage(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
