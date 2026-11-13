@@ -32,7 +32,7 @@ export default function OrganizationPage() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      window.location.href = '/auth/sign-in';
+      window.location.href = '/auth/sign-in/';
       return;
     }
     const params = new URLSearchParams(window.location.search);
@@ -93,7 +93,7 @@ export default function OrganizationPage() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/dashboard" className="flex items-center gap-2 text-primary-600 hover:text-primary-700">
+          <Link href="/dashboard/" className="flex items-center gap-2 text-primary-600 hover:text-primary-700">
             <ArrowLeft className="w-5 h-5" />
             Back to Organizations
           </Link>

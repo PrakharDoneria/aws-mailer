@@ -41,7 +41,7 @@ export default function SignIn() {
       const { data: result } = await response.json();
       const token = result.idToken || result.accessToken || result.token;
       localStorage.setItem('token', token);
-      window.location.href = '/dashboard';
+      window.location.href = '/dashboard/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

@@ -54,7 +54,7 @@ export default function SignUp() {
 
       setSuccess(true);
       setTimeout(() => {
-        window.location.href = '/auth/sign-in';
+        window.location.href = '/auth/sign-in/';
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

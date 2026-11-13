@@ -20,7 +20,7 @@ export default function Dashboard() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      window.location.href = '/auth/sign-in';
+      window.location.href = '/auth/sign-in/';
       return;
     }
     fetchOrganizations();
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.href = '/auth/sign-in';
+    window.location.href = '/auth/sign-in/';
   };
 
   return (
