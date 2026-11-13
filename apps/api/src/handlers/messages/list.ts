@@ -29,3 +29,4 @@ export const handler = withErrorHandling(async (event) => {
 
   return paginatedResponse(items, items.length, 1, limit, 200);
 });
+

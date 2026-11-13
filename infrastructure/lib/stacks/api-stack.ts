@@ -282,6 +282,27 @@ export class ApiStack extends Construct {
       { authorizer }
     );
 
+    // Organization domains sub-resource: /v1/organizations/{id}/domains
+    const orgDomainsResource = orgIdResource.addResource("domains");
+    orgDomainsResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListOrgDomains",
+        props,
+        "handlers/domains/list"
+      ),
+      { authorizer }
+    );
+    orgDomainsResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateOrgDomain",
+        props,
+        "handlers/domains/create"
+      ),
+      { authorizer }
+    );
+
     // Team management endpoints
     const teamResource = orgIdResource.addResource("team");
     

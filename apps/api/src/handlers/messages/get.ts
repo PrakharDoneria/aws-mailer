@@ -29,3 +29,4 @@ export const handler = withErrorHandling(async (event) => {
 
   return successResponse(message);
 });
+

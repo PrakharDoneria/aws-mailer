@@ -6,7 +6,9 @@ import { MailForgeError, ErrorCodes } from "@mailforge/shared";
 
 export const handler = withErrorHandling(async (event) => {
   const auth = extractAuthContext(event);
-  const organizationId = event.pathParameters?.organizationId;
+  const organizationId =
+    event.pathParameters?.organizationId ||
+    event.queryStringParameters?.organizationId;
 
   if (!organizationId) {
     throw new MailForgeError(ErrorCodes.INVALID_INPUT, "Organization ID required", 400);
