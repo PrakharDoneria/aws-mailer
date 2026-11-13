@@ -66,9 +66,9 @@ export npm_config_cache="$CACHE"
 rm -rf node_modules apps/web/.next apps/web/out
 npm cache clean --force >/dev/null 2>&1 || true
 if [[ -f package-lock.json ]]; then
-  npm ci --ignore-scripts --no-audit --no-fund --omit=optional --install-strategy=shallow
+  npm ci --ignore-scripts --no-audit --no-fund --install-strategy=shallow
 else
-  npm install --ignore-scripts --no-audit --no-fund --omit=optional --install-strategy=shallow
+  npm install --ignore-scripts --no-audit --no-fund --install-strategy=shallow
 fi
 
 build() { npx tsc -p "$1"; }

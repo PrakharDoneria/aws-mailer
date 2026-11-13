@@ -88,10 +88,10 @@ log "Using AWS region ${REGION}"
 log "Installing dependencies"
 if [[ -f package-lock.json ]]; then
   npm ci --ignore-scripts --no-audit --no-fund \
-    --omit=optional --install-strategy=shallow
+    --install-strategy=shallow
 else
   npm install --ignore-scripts --no-audit --no-fund \
-    --omit=optional --install-strategy=shallow
+    --install-strategy=shallow
 fi
 npm cache clean --force >/dev/null 2>&1 || true
 require_disk_space "${TMPDIR:-/tmp}"
