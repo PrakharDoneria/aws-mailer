@@ -18,6 +18,11 @@ export default function Dashboard() {
   const [newOrgName, setNewOrgName] = useState('');
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/auth/sign-in';
+      return;
+    }
     fetchOrganizations();
   }, []);
 

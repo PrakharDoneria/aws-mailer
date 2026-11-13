@@ -30,7 +30,14 @@ export default function OrganizationPage() {
   const [tab, setTab] = useState<'mailboxes' | 'inbox' | 'compose'>('mailboxes');
 
   useEffect(() => {
-    setOrganizationId(new URLSearchParams(window.location.search).get('id') || '');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/auth/sign-in';
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const orgId = params.get('id') || params.get('orgId') || '';
+    setOrganizationId(orgId);
   }, []);
 
   useEffect(() => {
