@@ -47,7 +47,9 @@ export default function SignUp() {
       });
 
       if (!response.ok) {
-        throw new Error('Sign up failed');
+        const errorData = await response.json().catch(() => null);
+        const serverMessage = errorData?.error?.message || errorData?.message;
+        throw new Error(serverMessage || `Sign up failed (${response.status})`);
       }
 
       setSuccess(true);

@@ -32,10 +32,10 @@ export class AuthenticationStack extends Construct {
       },
       mfa: cognito.Mfa.OPTIONAL,
       mfaSecondFactor: {
-        sms: true,
+        sms: false,
         otp: true,
       },
-      accountRecovery: cognito.AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 

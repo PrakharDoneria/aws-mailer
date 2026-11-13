@@ -29,7 +29,8 @@ export function withErrorHandling(handler: AsyncHandler): AsyncHandler {
         return errorResponse(error, 400);
       }
 
-      return errorResponse(error, 500);
+      const message = error instanceof Error ? error.message : "Internal server error";
+      return errorResponse(message, 500);
     }
   };
 }

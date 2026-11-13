@@ -85,9 +85,11 @@ export class AuthService {
         throw error;
       }
       console.error("SignUp error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to sign up";
       throw new MailForgeError(
         ErrorCodes.INTERNAL_ERROR,
-        "Failed to sign up",
+        errorMessage,
         500
       );
     }

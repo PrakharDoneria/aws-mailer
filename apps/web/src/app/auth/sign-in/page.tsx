@@ -33,7 +33,9 @@ export default function SignIn() {
       });
 
       if (!response.ok) {
-        throw new Error('Invalid credentials');
+        const errorData = await response.json().catch(() => null);
+        const serverMessage = errorData?.error?.message || errorData?.message;
+        throw new Error(serverMessage || `Sign in failed (${response.status})`);
       }
 
       const { data: result } = await response.json();
