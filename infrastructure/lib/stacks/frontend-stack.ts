@@ -33,10 +33,16 @@ export class FrontendStack extends Construct {
       defaultRootObject: "index.html",
       errorResponses: [
         {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: "/index.html",
+          ttl: cdk.Duration.seconds(10),
+        },
+        {
           httpStatus: 404,
           responseHttpStatus: 200,
           responsePagePath: "/index.html",
-          ttl: cdk.Duration.minutes(5),
+          ttl: cdk.Duration.seconds(10),
         },
       ],
     });
