@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Settings, LogOut, Plus, Search } from 'lucide-react';
+import { Mail, Settings, LogOut, Plus, ArrowRight, Building2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Organization {
@@ -74,39 +74,40 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="app-shell">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
           <div className="flex items-center gap-2">
-            <Mail className="w-6 h-6 text-primary-600" />
-            <span className="text-xl font-bold text-gray-900">MailForge</span>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-600 text-white"><Mail className="h-5 w-5" /></span>
+            <span className="text-lg font-extrabold tracking-tight text-slate-950">MailForge</span>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard/settings" className="text-gray-600 hover:text-gray-900">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/dashboard/settings" aria-label="Settings" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
               <Settings className="w-5 h-5" />
             </Link>
             <button
               onClick={handleLogout}
-              className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+              className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             >
               <LogOut className="w-5 h-5" />
-              Sign Out
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
+      <main className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+        <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Organizations</h1>
-            <p className="text-gray-600 mt-2">Manage your email organizations</p>
+            <p className="eyebrow">Workspace</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Your organizations</h1>
+            <p className="mt-2 text-slate-600">Set up and manage the homes for your email domains.</p>
           </div>
           <button
             onClick={() => setShowNewOrg(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="btn-primary"
           >
             <Plus className="w-5 h-5" />
             New Organization
@@ -114,25 +115,25 @@ export default function Dashboard() {
         </div>
 
         {showNewOrg && (
-          <div className="mb-8 p-6 bg-white rounded-lg shadow-md border-l-4 border-primary-600">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Organization</h3>
-            <div className="flex gap-4">
+          <div className="surface mb-8 border-l-4 border-l-primary-600 p-6">
+            <h3 className="text-lg font-bold text-slate-950">Create an organization</h3><p className="mt-1 text-sm text-slate-500">Give your team a distinct place to manage mailboxes.</p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
                 placeholder="Organization name"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="field flex-1"
               />
               <button
                 onClick={createOrganization}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="btn-primary"
               >
                 Create
               </button>
               <button
                 onClick={() => setShowNewOrg(false)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -141,43 +142,43 @@ export default function Dashboard() {
         )}
 
         {loading ? (
-          <div className="text-center py-12">
+          <div className="py-16 text-center">
             <div className="animate-spin inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full"></div>
             <p className="text-gray-600 mt-4">Loading organizations...</p>
           </div>
         ) : orgs.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg">
-            <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No organizations yet</h3>
-            <p className="text-gray-600 mb-6">Create your first organization to get started</p>
+          <div className="surface px-6 py-16 text-center">
+            <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Building2 className="h-8 w-8" /></span>
+            <h3 className="text-xl font-bold text-slate-950">Create your first organization</h3>
+            <p className="mx-auto mt-2 max-w-sm text-slate-600">Organizations keep your domains, mailboxes, and messages neatly separated.</p>
             <button
               onClick={() => setShowNewOrg(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              className="btn-primary mt-6 px-5 py-3"
             >
               <Plus className="w-5 h-5" />
               Create Organization
             </button>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {orgs.map((org) => (
               <Link
                 key={org.id}
                 href={`/dashboard/orgs?id=${encodeURIComponent(org.id)}`}
-                className="p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 hover:border-primary-300"
+                className="surface group p-6 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{org.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1">Plan: {org.plan}</p>
+                    <h3 className="text-lg font-bold text-slate-950">{org.name}</h3>
+                    <p className="mt-1 text-sm text-slate-500">Email workspace</p>
                   </div>
-                  <span className="px-3 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                  <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-bold text-primary-700">
                     {org.plan}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4"><p className="text-xs text-slate-500">
                   Created {new Date(org.createdAt * 1000).toLocaleDateString()}
-                </p>
+                </p><ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-primary-600" /></div>
               </Link>
             ))}
           </div>

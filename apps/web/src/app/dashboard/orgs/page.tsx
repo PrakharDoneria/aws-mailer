@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Send, ArrowLeft, Plus, CheckCircle2, RefreshCw, X, User, Calendar, Tag } from 'lucide-react';
+import { Mail, Send, ArrowLeft, Plus, CheckCircle2, RefreshCw, X, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
 interface Mailbox {
@@ -233,24 +233,24 @@ export default function OrganizationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="app-shell">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/dashboard/" className="flex items-center gap-2 text-primary-600 hover:text-primary-700">
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link href="/dashboard/" className="flex items-center gap-2 rounded-lg py-2 text-sm font-semibold text-slate-600 hover:text-primary-700">
             <ArrowLeft className="w-5 h-5" />
             Back to Organizations
           </Link>
           <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-primary-600" />
-            <span className="font-semibold text-gray-900">MailForge</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary-600 text-white"><Mail className="h-4 w-4" /></span>
+            <span className="font-extrabold tracking-tight text-slate-950">MailForge</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200">
+        <div className="mb-10 flex w-full gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:w-fit">
           {(['mailboxes', 'inbox', 'compose'] as const).map((t) => (
             <button
               key={t}
@@ -261,10 +261,10 @@ export default function OrganizationPage() {
                   fetchMessages(selectedMailboxId);
                 }
               }}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors sm:flex-none ${
                 tab === t
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -275,16 +275,16 @@ export default function OrganizationPage() {
         {/* Mailboxes Tab */}
         {tab === 'mailboxes' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Mailboxes & Addresses</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="eyebrow">Organization</p><h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">Mailboxes & addresses</h2>
+                <p className="mt-1 text-sm text-slate-600">
                   Mailboxes mapped to your AWS SES verified domains.
                 </p>
               </div>
               <button
                 onClick={() => setShowNewMailbox(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+                className="btn-primary"
               >
                 <Plus className="w-4 h-4" />
                 Add Mailbox
@@ -292,8 +292,8 @@ export default function OrganizationPage() {
             </div>
 
             {showNewMailbox && (
-              <div className="mb-8 p-6 bg-white rounded-lg shadow-md border-l-4 border-primary-600">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Add New Mailbox / Email Address</h3>
+              <div className="surface mb-8 border-l-4 border-l-primary-600 p-6">
+                <h3 className="text-lg font-bold text-slate-950">Add a mailbox</h3>
                 <p className="text-sm text-gray-500 mb-4">
                   Enter your address prefix and any domain verified in your AWS SES.
                 </p>
@@ -304,7 +304,7 @@ export default function OrganizationPage() {
                   </div>
                 )}
 
-                <div className="grid md:grid-cols-3 gap-4 mb-4">
+                <div className="mb-5 grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                       Local Part (Prefix)
@@ -314,7 +314,7 @@ export default function OrganizationPage() {
                       placeholder="e.g. test or support"
                       value={newLocalPart}
                       onChange={(e) => setNewLocalPart(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                      className="field"
                     />
                   </div>
                   <div>
@@ -326,7 +326,7 @@ export default function OrganizationPage() {
                       placeholder="e.g. testmailer.sblab.xyz"
                       value={newDomain}
                       onChange={(e) => setNewDomain(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                      className="field"
                     />
                   </div>
                   <div>
@@ -338,7 +338,7 @@ export default function OrganizationPage() {
                       placeholder="My Team"
                       value={newDisplayName}
                       onChange={(e) => setNewDisplayName(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
+                      className="field"
                     />
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export default function OrganizationPage() {
                   <button
                     onClick={handleCreateMailbox}
                     disabled={mailboxCreating}
-                    className="px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
+                    className="btn-primary"
                   >
                     {mailboxCreating ? 'Adding...' : 'Save Mailbox'}
                   </button>
@@ -356,7 +356,7 @@ export default function OrganizationPage() {
                       setShowNewMailbox(false);
                       setMailboxError('');
                     }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="btn-secondary"
                   >
                     Cancel
                   </button>
@@ -369,28 +369,28 @@ export default function OrganizationPage() {
                 <div className="animate-spin inline-block w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full"></div>
               </div>
             ) : mailboxes.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No mailboxes added yet</h3>
-                <p className="text-gray-600 mb-6">
+              <div className="surface px-6 py-16 text-center">
+                <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-primary-50 text-primary-600"><Mail className="h-8 w-8" /></span>
+                <h3 className="text-lg font-bold text-slate-950">No mailboxes yet</h3>
+                <p className="mx-auto mt-2 max-w-md text-slate-600">
                   Add your verified SES domain and local address to start sending and receiving.
                 </p>
                 <button
                   onClick={() => setShowNewMailbox(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+                  className="btn-primary mt-6"
                 >
                   <Plus className="w-4 h-4" />
                   Add First Mailbox
                 </button>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid gap-5 md:grid-cols-2">
                 {mailboxes.map((mb) => {
                   const fullEmail = mb.domainId ? `${mb.localPart}@${mb.domainId}` : mb.localPart;
                   return (
                     <div
                       key={mb.id}
-                      className="p-6 bg-white rounded-lg shadow-sm border border-gray-200"
+                      className="surface p-6"
                     >
                       <div className="flex justify-between items-start">
                         <div>
@@ -403,7 +403,7 @@ export default function OrganizationPage() {
                         </span>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-4 text-sm bg-gray-50 p-3 rounded">
+                      <div className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 text-sm">
                         <div>
                           <p className="text-gray-500 text-xs">Unread Messages</p>
                           <p className="text-xl font-bold text-gray-900">{mb.unreadCount}</p>

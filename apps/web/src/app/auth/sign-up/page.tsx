@@ -76,8 +76,8 @@ export default function SignUp() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+      <div className="app-shell flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="surface p-8 text-center">
           <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-green-600 text-2xl">✓</span>
           </div>
@@ -89,16 +89,16 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+    <div className="app-shell flex min-h-screen items-center justify-center px-4 py-10 sm:px-6">
+      <div className="w-full max-w-md"><Link href="/" className="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary-700"><Mail className="h-4 w-4" /> MailForge</Link><div className="surface p-6 sm:p-8">
         <div className="text-center mb-8">
-          <Mail className="w-12 h-12 text-primary-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-600 mt-2">Get started with MailForge</p>
+          <span className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/20"><Mail className="h-6 w-6" /></span>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950">Create your workspace</h1>
+          <p className="mt-2 text-slate-600">Set up your first organization in minutes.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
+          <div className="mb-6 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
             <p className="text-red-800">{error}</p>
           </div>
@@ -106,64 +106,64 @@ export default function SignUp() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Full Name
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <User className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 {...register('name')}
                 type="text"
                 placeholder="John Doe"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="field pl-11"
               />
             </div>
             {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Email
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 {...register('email')}
                 type="email"
                 placeholder="you@example.com"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="field pl-11"
               />
             </div>
             {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 {...register('password')}
                 type="password"
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="field pl-11"
               />
             </div>
             {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Confirm Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 {...register('confirmPassword')}
                 type="password"
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="field pl-11"
               />
             </div>
             {errors.confirmPassword && <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>}
@@ -172,19 +172,19 @@ export default function SignUp() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="btn-primary w-full py-3"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 mt-6">
+        <p className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{' '}
           <Link href="/auth/sign-in" className="text-primary-600 font-medium hover:text-primary-700">
             Sign In
           </Link>
-        </p>
+        </p></div>
       </div>
     </div>
   );
