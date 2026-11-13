@@ -11,9 +11,9 @@ export function withErrorHandling(handler: AsyncHandler): AsyncHandler {
   return async (event, context) => {
     try {
       console.log("Incoming request:", {
-        method: event.httpMethod,
-        path: event.path,
-        userId: event.requestContext.authorizer?.claims?.sub,
+        method: event?.httpMethod,
+        path: event?.path,
+        userId: event?.requestContext?.authorizer?.claims?.sub,
       });
 
       const response = await handler(event, context);

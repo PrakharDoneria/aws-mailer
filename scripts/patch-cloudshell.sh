@@ -82,6 +82,9 @@ build apps/lambda/outbound-sender/tsconfig.json
 build apps/lambda/ses-event-processor/tsconfig.json
 build apps/lambda/webhook-dispatcher/tsconfig.json
 
+log "Bundling Lambda assets with esbuild for self-contained execution"
+node scripts/bundle-lambdas.js
+
 bootstrap_cdk() {
   local bootstrap_status
   local execution_role

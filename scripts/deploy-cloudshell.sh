@@ -113,6 +113,9 @@ build_typescript "apps/lambda/outbound-sender/tsconfig.json" "apps/lambda/outbou
 build_typescript "apps/lambda/ses-event-processor/tsconfig.json" "apps/lambda/ses-event-processor/dist/index.js"
 build_typescript "apps/lambda/webhook-dispatcher/tsconfig.json" "apps/lambda/webhook-dispatcher/dist/index.js"
 
+log "Bundling Lambda assets with esbuild for self-contained execution"
+node scripts/bundle-lambdas.js
+
 bootstrap_cdk() {
   local bootstrap_status
   local execution_role

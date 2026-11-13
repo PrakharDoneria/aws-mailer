@@ -146,6 +146,21 @@ export class ApiStack extends Construct {
       }
     );
 
+    // Grant Cognito permissions to Lambda execution role for auth flows
+    this.lambdaRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminInitiateAuth",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminUserGlobalSignOut",
+        ],
+        resources: [props.userPool.userPoolArn],
+      })
+    );
+
     // Add root resource and methods
     const v1Resource = this.api.root.addResource("v1");
 
@@ -528,7 +543,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "CreateAPIKey",
         props,
-        "handlers/api-keys/create"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
@@ -537,7 +552,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "ListAPIKeys",
         props,
-        "handlers/api-keys/list"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
@@ -548,7 +563,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "DeleteAPIKey",
         props,
-        "handlers/api-keys/delete"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
@@ -560,7 +575,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "CreateWebhook",
         props,
-        "handlers/webhooks/create"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
@@ -569,7 +584,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "ListWebhooks",
         props,
-        "handlers/webhooks/list"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
@@ -580,7 +595,7 @@ export class ApiStack extends Construct {
       this.createLambdaIntegration(
         "DeleteWebhook",
         props,
-        "handlers/webhooks/delete"
+        "handlers/placeholder"
       ),
       { authorizer }
     );
