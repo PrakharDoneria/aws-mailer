@@ -13,5 +13,16 @@ export const handler = withErrorHandling(async (event) => {
 
   const user = await service.signUp(input);
 
-  return successResponse(user, 201);
+  // Automatically sign in the user to return auth tokens immediately
+  let tokens = null;
+  try {
+    tokens = await service.signIn({
+      email: input.email,
+      password: input.password,
+    });
+  } catch (e) {
+    console.warn("Auto-signin failed after signup:", e);
+  }
+
+  return successResponse({ user, ...tokens }, 201);
 });

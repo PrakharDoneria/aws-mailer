@@ -228,7 +228,8 @@ export class ApiStack extends Construct {
         "CreateOrganization",
         props,
         "handlers/organizations/create"
-      )
+      ),
+      { authorizer }
     );
     orgsResource.addMethod(
       "GET",
@@ -256,6 +257,27 @@ export class ApiStack extends Construct {
         "UpdateOrganization",
         props,
         "handlers/organizations/update"
+      ),
+      { authorizer }
+    );
+
+    // Organization mailboxes sub-resource: /v1/organizations/{id}/mailboxes
+    const orgMailboxesResource = orgIdResource.addResource("mailboxes");
+    orgMailboxesResource.addMethod(
+      "GET",
+      this.createLambdaIntegration(
+        "ListOrgMailboxes",
+        props,
+        "handlers/mailboxes/list"
+      ),
+      { authorizer }
+    );
+    orgMailboxesResource.addMethod(
+      "POST",
+      this.createLambdaIntegration(
+        "CreateOrgMailbox",
+        props,
+        "handlers/mailboxes/create"
       ),
       { authorizer }
     );

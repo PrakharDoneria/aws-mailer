@@ -6,8 +6,12 @@ import { MailForgeError, ErrorCodes } from "@mailforge/shared";
 
 export const handler = withErrorHandling(async (event) => {
   const auth = extractAuthContext(event);
-  const organizationId = event.pathParameters?.organizationId;
-  const draftId = event.pathParameters?.draftId;
+  const organizationId =
+    event.pathParameters?.organizationId ||
+    event.queryStringParameters?.organizationId;
+  const draftId =
+    event.pathParameters?.draftId ||
+    event.queryStringParameters?.draftId;
 
   if (!organizationId || !draftId) {
     throw new MailForgeError(

@@ -52,10 +52,21 @@ export default function SignUp() {
         throw new Error(serverMessage || `Sign up failed (${response.status})`);
       }
 
+      const resData = await response.json();
+      const tokens = resData?.data;
+      const token = tokens?.idToken || tokens?.accessToken || tokens?.token;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        window.location.href = '/auth/sign-in/';
-      }, 2000);
+        if (token) {
+          window.location.href = '/dashboard/';
+        } else {
+          window.location.href = '/auth/sign-in/';
+        }
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

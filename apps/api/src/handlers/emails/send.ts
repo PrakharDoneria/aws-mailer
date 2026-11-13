@@ -7,17 +7,28 @@ import { MailForgeError, ErrorCodes } from "@mailforge/shared";
 
 export const handler = withErrorHandling(async (event) => {
   const auth = extractAuthContext(event);
-  const organizationId = event.pathParameters?.organizationId;
-
-  if (!organizationId) {
-    throw new MailForgeError(ErrorCodes.INVALID_INPUT, "Organization ID required", 400);
-  }
+  let organizationId =
+    event.pathParameters?.organizationId ||
+    event.queryStringParameters?.organizationId;
 
   if (!event.body) {
     throw new Error("Request body required");
   }
 
-  const input = SendEmailSchema.parse(JSON.parse(event.body));
+  const parsedBody = JSON.parse(event.body);
+  if (!organizationId && parsedBody.organizationId) {
+    organizationId = parsedBody.organizationId;
+  }
+
+  if (!organizationId) {
+    throw new MailForgeError(
+      ErrorCodes.INVALID_INPUT,
+      "Organization ID required (in path, query, or body)",
+      400
+    );
+  }
+
+  const input = SendEmailSchema.parse(parsedBody);
   const service = new EmailService();
 
   const message = await service.sendEmail(organizationId, input);
