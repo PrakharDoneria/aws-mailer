@@ -21,6 +21,22 @@ export class FrontendStack extends Construct {
 
     this.bucket = props.bucket;
 
+    // CloudFront Function to rewrite directory requests to index.html (e.g. /auth/sign-in/ -> /auth/sign-in/index.html)
+    const rewriteFunction = new cloudfront.Function(this, "UrlRewriteFunction", {
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  if (uri.endsWith('/')) {
+    request.uri += 'index.html';
+  } else if (!uri.includes('.')) {
+    request.uri += '/index.html';
+  }
+  return request;
+}
+      `),
+    });
+
     // Create CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, "Distribution", {
       defaultBehavior: {
@@ -29,6 +45,12 @@ export class FrontendStack extends Construct {
           cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
+        functionAssociations: [
+          {
+            function: rewriteFunction,
+            eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+          },
+        ],
       },
       defaultRootObject: "index.html",
       errorResponses: [
